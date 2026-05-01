@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <stack>
+#include <vector>
 using namespace std;
 
 #include "graphics_headers.h"
@@ -11,6 +12,7 @@ using namespace std;
 #include "object.h"
 #include "sphere.h"
 #include "mesh.h"
+#include "Asteroid.h"
 
 #define numVBOs 2;
 #define numIBs 2;
@@ -47,7 +49,7 @@ class Graphics
     GLint m_colorAttrib;
     GLint m_tcAttrib;
     GLint m_hasTexture;
-
+    GLint m_useInstancing;
 
     Sphere* m_sun;
     Sphere* m_mercury;
@@ -62,9 +64,27 @@ class Graphics
     Sphere* m_eris;
     Sphere* m_haumea;
     Sphere* m_moon;
+    Sphere* m_moon1;
+    Sphere* m_moon2;
+    Sphere* m_moon3;
+    Sphere* m_moon4;
+    Sphere* m_comet;
 
     Mesh* m_mesh;
     Mesh* m_skybox;
+    
+	int randomizers[150];
+    float spacingScale = 3.0f;
+
+    // Inner asteroid belt
+    Asteroid* m_asteroids;
+    std::vector<glm::mat4> m_asteroidTransforms;
+    int m_asteroidCount;
+    
+    // Outer asteroid belt
+    Asteroid* m_outerAsteroids;
+    std::vector<glm::mat4> m_outerAsteroidTransforms;
+    int m_outerAsteroidCount;
 };
 
 #endif /* GRAPHICS_H */

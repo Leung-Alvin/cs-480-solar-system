@@ -44,6 +44,11 @@ bool Shader::AddShader(GLenum ShaderType)
           layout (location = 0) in vec3 v_position; \
           layout (location = 1) in vec3 v_color; \
           layout (location = 2) in vec2 v_tc;  \
+          \
+          layout (location = 3) in vec4 instanceMatrix_col0; \
+          layout (location = 4) in vec4 instanceMatrix_col1; \
+          layout (location = 5) in vec4 instanceMatrix_col2; \
+          layout (location = 6) in vec4 instanceMatrix_col3; \
              \
           out vec3 color; \
           out vec2 tc;\
@@ -51,13 +56,22 @@ bool Shader::AddShader(GLenum ShaderType)
           uniform mat4 projectionMatrix; \
           uniform mat4 viewMatrix; \
           uniform mat4 modelMatrix; \
+          uniform int useInstancing; \
           uniform bool hasTC;        \
           uniform sampler2D sp; \
           \
           void main(void) \
           { \
+            mat4 finalModel; \
+            \
+            if (useInstancing == 1) { \
+              finalModel = mat4(instanceMatrix_col0, instanceMatrix_col1, instanceMatrix_col2, instanceMatrix_col3); \
+            } else { \
+              finalModel = modelMatrix; \
+            } \
+            \
             vec4 v = vec4(v_position, 1.0); \
-            gl_Position = (projectionMatrix * viewMatrix * modelMatrix) * v; \
+            gl_Position = (projectionMatrix * viewMatrix * finalModel) * v; \
             color = v_color; \
             tc = v_tc;\
           } \

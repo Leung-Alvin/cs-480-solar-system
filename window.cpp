@@ -18,6 +18,8 @@ Window::Window(const char* name, int* width, int* height)
 
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+  // window hint for resizing screen or locking screen size 
+  glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
   // Create window
   gWindow = glfwCreateWindow(*width, *height, name, NULL, NULL);

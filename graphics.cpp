@@ -2,6 +2,9 @@
 
 Graphics::Graphics()
 {
+	for(int i = 0; i < 150; i++) {
+		randomizers[i] = glm::linearRand(-5, 5);
+	}
 
 }
 
@@ -99,8 +102,26 @@ bool Graphics::Initialize(int width, int height)
 	// The moon
 	m_moon = new Sphere(48, "assets\\2k_moon.jpg");
 
+	// Jupiter's moons
+	m_moon1 = new Sphere(32, "assets\\2k_moon.jpg");
+	m_moon2 = new Sphere(32, "assets\\2k_moon.jpg");
+	
+	// Saturn's moons
+	m_moon3 = new Sphere(32, "assets\\2k_moon.jpg");
+	m_moon4 = new Sphere(32, "assets\\2k_moon.jpg");
+	
+	// Independent moon orbiting the sun
+	m_comet = new Sphere(40, "assets\\2k_moon.jpg");
+
 	// Skybox - use a large cube with a space texture
 	m_skybox = new Mesh(glm::vec3(0.0f, 0.0f, 0.0f), "assets\\cube.obj", "assets\\Galaxy-cubemap2.png");
+
+	m_asteroidCount = 50;
+	m_asteroids = new Asteroid("assets\\2k_moon.jpg");
+	
+	m_outerAsteroidCount = 150;
+	m_outerAsteroids = new Asteroid("assets\\2k_moon.jpg");
+
 
 	//enable depth testing
 	glEnable(GL_DEPTH_TEST);
@@ -125,13 +146,13 @@ void Graphics::HierarchicalUpdate2(double dt) {
   modelStack.push(glm::translate(glm::mat4(1.f), glm::vec3(0, 0, 0)));
 	localTransform = modelStack.top();
 	localTransform *= glm::rotate(glm::mat4(1.0f), (float)dt * 0.5f, glm::vec3(0.f, 1.f, 0.f));
-	localTransform *= glm::scale(glm::vec3(.75, .75, .75));
+	localTransform *= glm::scale(glm::vec3(3.0, 3.0, 3.0));
 	if (m_sun != NULL)
 		m_sun->Update(localTransform);
 
 	// Mercury
 	speed = { 1.5f, 0.0f, 1.5f };
-	dist = { 2.0f, 0.0f, 2.0f };
+	dist = { spacingScale*2.0f, spacingScale * 0.0f, spacingScale * 2.0f };
 	rotVector = glm::vec3(0.0f, 1.0f, 0.0f);
 	rotSpeed = { 3.0f, 3.0f, 3.0f };
 	scale = { 0.2f, 0.2f, 0.2f };
@@ -145,7 +166,7 @@ void Graphics::HierarchicalUpdate2(double dt) {
 
 	// Venus
 	speed = { 1.3f, 0.0f, 1.3f };
-	dist = { 3.5f, 0.0f, 3.5f };
+	dist = { spacingScale * 3.5f, spacingScale * 0.0f, spacingScale * 3.5f };
 	rotVector = glm::vec3(0.0f, 1.0f, 0.0f);
 	rotSpeed = { 2.5f, 2.5f, 2.5f };
 	scale = { 0.35f, 0.35f, 0.35f };
@@ -159,7 +180,7 @@ void Graphics::HierarchicalUpdate2(double dt) {
 
 	// Earth
 	speed = { 1.0f, 0.0f, 1.0f };
-	dist = { 6.0f, 0.0f, 6.0f };
+	dist = { spacingScale * 6.0f, spacingScale * 0.0f, spacingScale * 6.0f };
 	rotVector = glm::vec3(0.0f, 1.0f, 0.0f);
 	rotSpeed = { 2.0f, 2.0f, 2.0f };
 	scale = { 0.5f, 0.5f, 0.5f };
@@ -175,7 +196,7 @@ void Graphics::HierarchicalUpdate2(double dt) {
 
 	// position of moon
 	speed = { 6.0f, 6.0f, 6.0f };
-	dist = { 1.25f, 1.25f, 1.25f };
+	dist = { spacingScale * 1.25f, spacingScale * 1.25f, spacingScale * 1.25f };
 	rotVector = glm::vec3(1.0f, 1.0f, 0.0f);
 	rotSpeed = { 0.25f, 0.25f, 0.25f };
 	scale = { 0.27f, 0.27f, 0.27f };
@@ -196,7 +217,7 @@ void Graphics::HierarchicalUpdate2(double dt) {
 
 	// Mars
 	speed = { 0.8f, 0.0f, 0.8f };
-	dist = { 8.0f, 0.0f, 8.0f };
+	dist = { spacingScale * 8.0f, spacingScale * 0.0f, spacingScale * 8.0f };
 	rotVector = glm::vec3(0.0f, 1.0f, 0.0f);
 	rotSpeed = { 1.8f, 1.8f, 1.8f };
 	scale = { 0.4f, 0.4f, 0.4f };
@@ -210,35 +231,103 @@ void Graphics::HierarchicalUpdate2(double dt) {
 
 	// Jupiter
 	speed = { 0.4f, 0.0f, 0.4f };
-	dist = { 12.0f, 0.0f, 12.0f };
+	dist = { spacingScale * 12.0f, spacingScale * 0.0f, spacingScale * 12.0f };
 	rotVector = glm::vec3(0.0f, 1.0f, 0.0f);
 	rotSpeed = { 3.0f, 3.0f, 3.0f };
 	scale = { 0.8f, 0.8f, 0.8f };
+	
 	localTransform = modelStack.top();
 	localTransform *= glm::translate(glm::mat4(1.f),
 		glm::vec3(cos(speed[0] * dt) * dist[0], 0.0f, sin(speed[2] * dt) * dist[2]));
+	modelStack.push(localTransform); // Save Jupiter's position for moons
+	
 	localTransform *= glm::rotate(glm::mat4(1.f), rotSpeed[0] * (float)dt, rotVector);
 	localTransform *= glm::scale(glm::vec3(scale[0], scale[1], scale[2]));
 	if (m_jupiter != NULL)
 		m_jupiter->Update(localTransform);
 
+	speed = { 5.0f, 5.0f, 5.0f };
+	dist = { spacingScale * 1.3f, spacingScale * 1.3f, spacingScale * 1.3f };
+	rotVector = glm::vec3(0.0f, 1.0f, 0.0f);
+	rotSpeed = { 2.0f, 2.0f, 2.0f };
+	scale = { 0.15f, 0.15f, 0.15f };
+	
+	localTransform = modelStack.top();
+	localTransform *= glm::translate(glm::mat4(1.f),
+		glm::vec3(cos(speed[0] * dt) * dist[0], sin(speed[1] * dt) * dist[1], sin(speed[2] * dt) * dist[2]));
+	localTransform *= glm::rotate(glm::mat4(1.f), rotSpeed[0] * (float)dt, rotVector);
+	localTransform *= glm::scale(glm::vec3(scale[0], scale[1], scale[2]));
+	if (m_moon1 != NULL)
+		m_moon1->Update(localTransform);
+
+	speed = { 3.5f, 3.5f, 3.5f };
+	dist = { spacingScale * 1.8f, spacingScale * 1.8f, spacingScale * 1.8f };
+	rotVector = glm::vec3(0.0f, 0.0f, 1.0f);
+	rotSpeed = { 1.5f, 1.5f, 1.5f };
+	scale = { 0.13f, 0.13f, 0.13f };
+	
+	localTransform = modelStack.top();
+	localTransform *= glm::rotate(glm::mat4(1.0f), glm::radians(30.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	localTransform *= glm::translate(glm::mat4(1.f),
+		glm::vec3(cos(speed[0] * dt) * dist[0], sin(speed[1] * dt) * dist[1], sin(speed[2] * dt) * dist[2]));
+	localTransform *= glm::rotate(glm::mat4(1.f), rotSpeed[0] * (float)dt, rotVector);
+	localTransform *= glm::scale(glm::vec3(scale[0], scale[1], scale[2]));
+	if (m_moon2 != NULL)
+		m_moon2->Update(localTransform);
+
+	modelStack.pop(); // Back to Sun from Jupiter
+
 	// Saturn
 	speed = { 0.3f, 0.0f, 0.3f };
-	dist = { 16.0f, 0.0f, 16.0f };
+	dist = { spacingScale * 16.0f, spacingScale * 0.0f, spacingScale * 16.0f };
 	rotVector = glm::vec3(0.0f, 1.0f, 0.0f);
 	rotSpeed = { 2.5f, 2.5f, 2.5f };
 	scale = { 0.7f, 0.7f, 0.7f };
+	
 	localTransform = modelStack.top();
 	localTransform *= glm::translate(glm::mat4(1.f),
 		glm::vec3(cos(speed[0] * dt) * dist[0], 0.0f, sin(speed[2] * dt) * dist[2]));
+	modelStack.push(localTransform); // Save Saturn's position for moons
+	
 	localTransform *= glm::rotate(glm::mat4(1.f), rotSpeed[0] * (float)dt, rotVector);
 	localTransform *= glm::scale(glm::vec3(scale[0], scale[1], scale[2]));
 	if (m_saturn != NULL)
 		m_saturn->Update(localTransform);
 
+	speed = { 4.0f, 4.0f, 4.0f };
+	dist = { spacingScale * 1.5f, spacingScale * 1.5f, spacingScale * 1.5f };
+	rotVector = glm::vec3(0.0f, 1.0f, 0.0f);
+	rotSpeed = { 1.8f, 1.8f, 1.8f };
+	scale = { 0.2f, 0.2f, 0.2f };
+	
+	localTransform = modelStack.top();
+	localTransform *= glm::translate(glm::mat4(1.f),
+		glm::vec3(cos(speed[0] * dt) * dist[0], sin(speed[1] * dt) * dist[1], sin(speed[2] * dt) * dist[2]));
+	localTransform *= glm::rotate(glm::mat4(1.f), rotSpeed[0] * (float)dt, rotVector);
+	localTransform *= glm::scale(glm::vec3(scale[0], scale[1], scale[2]));
+	if (m_moon3 != NULL)
+		m_moon3->Update(localTransform);
+
+	speed = { 5.5f, 5.5f, 5.5f };
+	dist = { spacingScale * 1.1f, spacingScale * 1.1f, spacingScale * 1.1f };
+	rotVector = glm::vec3(0.0f, 1.0f, 0.0f);
+	rotSpeed = { 2.5f, 2.5f, 2.5f };
+	scale = { 0.12f, 0.12f, 0.12f };
+	
+	localTransform = modelStack.top();
+	localTransform *= glm::rotate(glm::mat4(1.0f), glm::radians(-45.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+	localTransform *= glm::translate(glm::mat4(1.f),
+		glm::vec3(cos(speed[0] * dt) * dist[0], sin(speed[1] * dt) * dist[1], sin(speed[2] * dt) * dist[2]));
+	localTransform *= glm::rotate(glm::mat4(1.f), rotSpeed[0] * (float)dt, rotVector);
+	localTransform *= glm::scale(glm::vec3(scale[0], scale[1], scale[2]));
+	if (m_moon4 != NULL)
+		m_moon4->Update(localTransform);
+
+	modelStack.pop(); // Back to Sun from Saturn
+
 	// Uranus
 	speed = { 0.2f, 0.0f, 0.2f };
-	dist = { 20.0f, 0.0f, 20.0f };
+	dist = { spacingScale * 20.0f, spacingScale * 0.0f, spacingScale * 20.0f };
 	rotVector = glm::vec3(0.0f, 1.0f, 0.0f);
 	rotSpeed = { 2.0f, 2.0f, 2.0f };
 	scale = { 0.6f, 0.6f, 0.6f };
@@ -252,7 +341,7 @@ void Graphics::HierarchicalUpdate2(double dt) {
 
 	// Neptune
 	speed = { 0.15f, 0.0f, 0.15f };
-	dist = { 24.0f, 0.0f, 24.0f };
+	dist = { spacingScale * 24.0f, spacingScale * 0.0f, spacingScale * 24.0f };
 	rotVector = glm::vec3(0.0f, 1.0f, 0.0f);
 	rotSpeed = { 1.8f, 1.8f, 1.8f };
 	scale = { 0.55f, 0.55f, 0.55f };
@@ -266,7 +355,7 @@ void Graphics::HierarchicalUpdate2(double dt) {
 
 	// Ceres (dwarf planet in asteroid belt)
 	speed = { 0.6f, 0.0f, 0.6f };
-	dist = { 10.0f, 0.0f, 10.0f };
+	dist = { spacingScale * 10.0f, spacingScale * 0.0f, spacingScale * 10.0f };
 	rotVector = glm::vec3(0.0f, 1.0f, 0.0f);
 	rotSpeed = { 2.2f, 2.2f, 2.2f };
 	scale = { 0.15f, 0.15f, 0.15f };
@@ -280,7 +369,7 @@ void Graphics::HierarchicalUpdate2(double dt) {
 
 	// Eris (distant dwarf planet)
 	speed = { 0.1f, 0.0f, 0.1f };
-	dist = { 28.0f, 0.0f, 28.0f };
+	dist = { spacingScale * 28.0f, spacingScale * 0.0f, spacingScale * 28.0f };
 	rotVector = glm::vec3(0.0f, 1.0f, 0.0f);
 	rotSpeed = { 1.5f, 1.5f, 1.5f };
 	scale = { 0.25f, 0.25f, 0.25f };
@@ -294,7 +383,7 @@ void Graphics::HierarchicalUpdate2(double dt) {
 
 	// Haumea (distant dwarf planet)
 	speed = { 0.12f, 0.0f, 0.12f };
-	dist = { 26.0f, 0.0f, 26.0f };
+	dist = { spacingScale * 26.0f, spacingScale * 0.0f, spacingScale * 26.0f };
 	rotVector = glm::vec3(0.0f, 1.0f, 0.0f);
 	rotSpeed = { 4.0f, 4.0f, 4.0f };
 	scale = { 0.2f, 0.2f, 0.2f };
@@ -306,23 +395,79 @@ void Graphics::HierarchicalUpdate2(double dt) {
 	if (m_haumea != NULL)
 		m_haumea->Update(localTransform);
 
-	// position of the starship
-	speed = { 3.0f, 3.0f, 3.0f };
-	dist = { 0.0f, 1.25f, 1.25f };
-	rotVector = glm::vec3(1.0f, 0.0f, 0.0f);
-	rotSpeed = { 0.0f, 3.0f, 3.0f };
-	scale = { 0.01f, 0.01f, 0.01f };
+	// Comet
+	speed = { -0.1f, -0.1f, -0.1f };
+	dist = { 18.0f, 0.0f, 18.0f };
+	rotVector = glm::vec3(0.0f, 1.0f, 0.0f);
+	rotSpeed = { .1f, 0.1f, 0.1f };
+	scale = { 0.3f, 0.3f, 0.3f };
+	glm::vec3 ellipse;
+	ellipse = { 2.2f, 0.0f, 0.5f };
 	
-	localTransform = modelStack.top();
+	localTransform = modelStack.top();  // Start from Sun
+	localTransform *= glm::rotate(glm::mat4(1.0f), glm::radians(19.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 	localTransform *= glm::translate(glm::mat4(1.f),
-		glm::vec3(0.0f, cos(speed[0] * dt) * dist[1], sin(speed[2] * dt) * dist[2]));
-	localTransform *= glm::rotate(glm::mat4(1.f), rotSpeed[1] * (float)dt, rotVector);
-	localTransform *= glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f)); 
+		glm::vec3(ellipse[0] * cos(speed[0] * dt) * dist[0] + 30, 0.0f, ellipse[2] * sin(speed[2] * dt) * dist[2]));
+	localTransform *= glm::rotate(glm::mat4(1.f), rotSpeed[0] * (float)dt, rotVector);
 	localTransform *= glm::scale(glm::vec3(scale[0], scale[1], scale[2]));
+	if (m_comet != NULL)
+		m_comet->Update(localTransform);
 
-	if (m_mesh != NULL)
-		m_mesh->Update(localTransform);
+	// Asteroid Belt 
+	m_asteroidTransforms.clear();
+	float beltRadius = spacingScale * 10.5f; // Distance from sun
+	float angleStep = (2.0f * 3.14159f) / m_asteroidCount;
+	
+	for (int i = 0; i < m_asteroidCount; i++) {
+		float angle = angleStep * i + (float)dt * 0.1f + randomizers[i];
+		float offset = (i % 3) * 0.5f - 0.5f; // Vary the radius slightly
+		float currentRadius = beltRadius + offset;
+		
+		// Each asteroid has slightly different rotation
+		float rotSpeed = 3.0f + (randomizers[i] * 0.03f);
+		glm::vec3 rotAxis = glm::normalize(glm::vec3(0.3f + i * 0.1f, 1.0f, 0.2f + i * 0.05f));
+		
+		localTransform = modelStack.top();
+		localTransform *= glm::translate(glm::mat4(1.f),
+			glm::vec3(cos(angle) * currentRadius, (sin(i * 1.5f) * 0.3f), sin(angle) * currentRadius));
+		localTransform *= glm::rotate(glm::mat4(1.f), rotSpeed * (float)dt, rotAxis);
+		localTransform *= glm::scale(glm::vec3(0.025f + (i % 3) * 0.05f));
+		
+		m_asteroidTransforms.push_back(localTransform);
+	}
+	
+	// Setup instancing with the computed transforms
+	if (m_asteroids != NULL) {
+		m_asteroids->Update(m_asteroidTransforms);
+	}
 
+	// Outer Asteroid Belt
+	m_outerAsteroidTransforms.clear();
+	float outerBeltRadius = spacingScale * 27.0f;
+	float outerAngleStep = (2.0f * 3.14159f) / m_outerAsteroidCount;
+	
+	for (int i = 0; i < m_outerAsteroidCount; i++) {
+		float orbitAngle = outerAngleStep * i + (float)dt * 0.03f + randomizers[i];
+		float offset = (i % 4) * 0.8f - 1.2f;
+		float currentRadius = outerBeltRadius + offset;
+		
+		float rotSpeed = 1.0f + (randomizers[i] * 0.05f);
+		glm::vec3 rotAxis = glm::normalize(glm::vec3(0.5f + i * 0.08f, 1.0f, 0.3f + i * 0.06f));
+		
+		localTransform = glm::mat4(1.0f);
+		
+		// Position in orbit with more vertical spread
+		localTransform *= glm::translate(glm::mat4(1.f), glm::vec3(cos(orbitAngle) * currentRadius, sin(i * 2.0f) * 0.5f, sin(orbitAngle) * currentRadius));
+		localTransform *= glm::rotate(glm::mat4(1.f), rotSpeed * (float)dt, rotAxis);
+		localTransform *= glm::scale(glm::vec3(0.15f + (i % 4) * 0.08f));
+		
+		m_outerAsteroidTransforms.push_back(localTransform);
+	}
+	
+	// Setup instancing with the computed transforms
+	if (m_outerAsteroids != NULL) {
+		m_outerAsteroids->Update(m_outerAsteroidTransforms);
+	}
 	modelStack.pop();
 }
 
@@ -357,7 +502,8 @@ void Graphics::Render()
 			glActiveTexture(GL_TEXTURE0);
 			glBindTexture(GL_TEXTURE_2D, m_skybox->getTextureID());
 			GLuint sampler = m_shader->GetUniformLocation("sp");
-			if (sampler == INVALID_UNIFORM_LOCATION) {
+			if (sampler == INVALID_UNIFORM_LOCATION)
+			{
 				printf("Sampler Not found\n");
 			}
 			glUniform1i(sampler, 0);
@@ -367,7 +513,7 @@ void Graphics::Render()
 	}
 
 	// Render mesh (starship)
-	if (m_mesh != NULL) {
+	/*if (m_mesh != NULL) {
 		glUniform1i(m_hasTexture, false);
 		glUniformMatrix4fv(m_modelMatrix, 1, GL_FALSE, glm::value_ptr(m_mesh->GetModel()));
 		if (m_mesh->hasTex) {
@@ -381,7 +527,7 @@ void Graphics::Render()
 			glUniform1i(sampler, 0);
 			m_mesh->Render(m_positionAttrib, m_colorAttrib, m_tcAttrib, m_hasTexture);
 		}
-	}
+	}*/
 
 	// Render Sun
 	if (m_sun != NULL) {
@@ -502,6 +648,40 @@ void Graphics::Render()
 		}
 	}
 
+	// Render moon
+	if (m_moon1 != NULL) {
+		glUniformMatrix4fv(m_modelMatrix, 1, GL_FALSE, glm::value_ptr(m_moon1->GetModel()));
+		if (m_moon1->hasTex) {
+			glUniform1i(m_hasTexture, 1);
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, m_moon1->getTextureID());
+			GLuint sampler = m_shader->GetUniformLocation("sp");
+			if (sampler == INVALID_UNIFORM_LOCATION)
+			{
+				printf("Sampler Not found not found\n");
+			}
+			glUniform1i(sampler, 0);
+			m_moon1->Render(m_positionAttrib, m_colorAttrib, m_tcAttrib, m_hasTexture);
+		}
+	}
+
+	// Render Moon
+	if (m_moon2 != NULL) {
+		glUniformMatrix4fv(m_modelMatrix, 1, GL_FALSE, glm::value_ptr(m_moon2->GetModel()));
+		if (m_moon2->hasTex) {
+			glUniform1i(m_hasTexture, 1);
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, m_moon2->getTextureID());
+			GLuint sampler = m_shader->GetUniformLocation("sp");
+			if (sampler == INVALID_UNIFORM_LOCATION)
+			{
+				printf("Sampler Not found not found\n");
+			}
+			glUniform1i(sampler, 0);
+			m_moon2->Render(m_positionAttrib, m_colorAttrib, m_tcAttrib, m_hasTexture);
+		}
+	}
+
 	// Render Saturn
 	if (m_saturn != NULL) {
 		glUniformMatrix4fv(m_modelMatrix, 1, GL_FALSE, glm::value_ptr(m_saturn->GetModel()));
@@ -516,6 +696,40 @@ void Graphics::Render()
 			}
 			glUniform1i(sampler, 0);
 			m_saturn->Render(m_positionAttrib, m_colorAttrib, m_tcAttrib, m_hasTexture);
+		}
+	}
+
+	// Render moon
+	if (m_moon3 != NULL) {
+		glUniformMatrix4fv(m_modelMatrix, 1, GL_FALSE, glm::value_ptr(m_moon3->GetModel()));
+		if (m_moon3->hasTex) {
+			glUniform1i(m_hasTexture, 1);
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, m_moon3->getTextureID());
+			GLuint sampler = m_shader->GetUniformLocation("sp");
+			if (sampler == INVALID_UNIFORM_LOCATION)
+			{
+				printf("Sampler Not found not found\n");
+			}
+			glUniform1i(sampler, 0);
+			m_moon3->Render(m_positionAttrib, m_colorAttrib, m_tcAttrib, m_hasTexture);
+		}
+	}
+
+	// Render moon
+	if (m_moon4 != NULL) {
+		glUniformMatrix4fv(m_modelMatrix, 1, GL_FALSE, glm::value_ptr(m_moon4->GetModel()));
+		if (m_moon4->hasTex) {
+			glUniform1i(m_hasTexture, 1);
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, m_moon4->getTextureID());
+			GLuint sampler = m_shader->GetUniformLocation("sp");
+			if (sampler == INVALID_UNIFORM_LOCATION)
+			{
+				printf("Sampler Not found not found\n");
+			}
+			glUniform1i(sampler, 0);
+			m_moon4->Render(m_positionAttrib, m_colorAttrib, m_tcAttrib, m_hasTexture);
 		}
 	}
 
@@ -604,6 +818,63 @@ void Graphics::Render()
 		}
 	}
 
+	// Render comet
+	if (m_comet != NULL) {
+		glUniformMatrix4fv(m_modelMatrix, 1, GL_FALSE, glm::value_ptr(m_comet->GetModel()));
+		if (m_comet->hasTex) {
+			glUniform1i(m_hasTexture, 1);
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, m_comet->getTextureID());
+			GLuint sampler = m_shader->GetUniformLocation("sp");
+			if (sampler == INVALID_UNIFORM_LOCATION)
+			{
+				printf("Sampler Not found\n");
+			}
+			glUniform1i(sampler, 0);
+			m_comet->Render(m_positionAttrib, m_colorAttrib, m_tcAttrib, m_hasTexture);
+		}
+	}
+
+	// Render Inner Asteroid Belt
+	if (m_asteroids != NULL && m_asteroidCount > 0) {
+		glUniform1i(m_useInstancing, 1);
+		if (m_asteroids->hasTex) {
+			glUniform1i(m_hasTexture, 1);
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, m_asteroids->getTextureID());
+			GLuint sampler = m_shader->GetUniformLocation("sp");
+			if (sampler == INVALID_UNIFORM_LOCATION)
+			{
+				printf("Sampler Not found not found\n");
+			}
+			glUniform1i(sampler, 0);
+		}
+		m_asteroids->Render(m_positionAttrib, m_colorAttrib, m_tcAttrib, m_hasTexture, 100);
+		if (m_useInstancing != INVALID_UNIFORM_LOCATION) {
+			glUniform1i(m_useInstancing, 0);
+		}
+	}
+
+	// Render Outer Asteroid Belt
+	if (m_outerAsteroids != NULL && m_outerAsteroidCount > 0) {
+		glUniform1i(m_useInstancing, 1);
+		if (m_outerAsteroids->hasTex) {
+			glUniform1i(m_hasTexture, 1);
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, m_outerAsteroids->getTextureID());
+			GLuint sampler = m_shader->GetUniformLocation("sp");
+			if (sampler == INVALID_UNIFORM_LOCATION)
+			{
+				printf("Sampler Not found not found\n");
+			}
+			glUniform1i(sampler, 0);
+		}
+		m_outerAsteroids->Render(m_positionAttrib, m_colorAttrib, m_tcAttrib, m_hasTexture, 150);
+		if (m_useInstancing != INVALID_UNIFORM_LOCATION) {
+			glUniform1i(m_useInstancing, 0);
+		}
+	}
+
 	// Get any errors from OpenGL
 	auto error = glGetError();
 	if (error != GL_NO_ERROR)
@@ -667,6 +938,12 @@ bool Graphics::collectShPrLocs() {
 	m_hasTexture = m_shader->GetUniformLocation("hasTexture");
 	if (m_hasTexture == INVALID_UNIFORM_LOCATION) {
 		printf("hasTexture uniform not found\n");
+		anyProblem = false;
+	}
+
+	m_useInstancing = m_shader->GetUniformLocation("useInstancing");
+	if (m_useInstancing == INVALID_UNIFORM_LOCATION) {
+		printf("m_useInstancing not found\n");
 		anyProblem = false;
 	}
 

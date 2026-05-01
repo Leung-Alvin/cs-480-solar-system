@@ -137,10 +137,9 @@ long long Engine::GetCurrentTimeMillis()
 }
 
 void Engine::Display(GLFWwindow* window, double time) {
-
-    m_graphics->Render();
+    m_graphics->HierarchicalUpdate2(time);  // UPDATE FIRST!
+    m_graphics->Render();                   // THEN RENDER
     m_window->Swap();
-    m_graphics->HierarchicalUpdate2(time);
 }
 
 static void cursorPositionCallBack(GLFWwindow* window, double xpos, double ypos) {
