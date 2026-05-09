@@ -83,64 +83,25 @@ void Sphere::Render(GLint positionAttribLoc, GLint colorAttribLoc)
     glDisableVertexAttribArray(colorAttribLoc);
 }
 
-//void Sphere::Render(GLint posAttribLoc, GLint colAttribLoc, GLint tcAttribLoc, GLint hasTextureLoc)
-//{
-//    glBindVertexArray(vao);
-//    // Enable vertex attibute arrays for each vertex attrib
-//    glEnableVertexAttribArray(posAttribLoc);
-//    glEnableVertexAttribArray(colAttribLoc);
-//    glEnableVertexAttribArray(tcAttribLoc);
-//
-//    // Bind your VBO
-//    glBindBuffer(GL_ARRAY_BUFFER, VB);
-//
-//    // Set vertex attribute pointers to the load correct data
-//    glVertexAttribPointer(posAttribLoc, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), 0);
-//    glVertexAttribPointer(colAttribLoc, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal));
-//    glVertexAttribPointer(tcAttribLoc, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, texcoord));
-//
-//    // Bind your Element Array
-//    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IB);
-//
-//    // Handle texture binding
-//    if (m_texture != NULL) {
-//        glUniform1i(hasTextureLoc, true);
-//        glActiveTexture(GL_TEXTURE0);
-//        glBindTexture(GL_TEXTURE_2D, m_texture->getTextureID());
-//    }
-//    else {
-//        glUniform1i(hasTextureLoc, false);
-//    }
-//
-//    // Render
-//    glDrawElements(GL_TRIANGLES, Indices.size(), GL_UNSIGNED_INT, 0);
-//
-//    // Disable vertex arrays
-//    glDisableVertexAttribArray(posAttribLoc);
-//    glDisableVertexAttribArray(colAttribLoc);
-//    glDisableVertexAttribArray(tcAttribLoc);
-//    glBindBuffer(GL_ARRAY_BUFFER, 0);
-//}
-
 void Sphere::Render(GLint posAttribLoc, GLint colAttribLoc, GLint tcAttribLoc, GLint hasTextureLoc, GLint normalAttribLoc)
 {
     glBindVertexArray(vao);
     glEnableVertexAttribArray(posAttribLoc);
-    glEnableVertexAttribArray(colAttribLoc);
+    //glEnableVertexAttribArray(colAttribLoc);
     glEnableVertexAttribArray(tcAttribLoc);
     glEnableVertexAttribArray(normalAttribLoc); 
 
     glBindBuffer(GL_ARRAY_BUFFER, VB);
 
     glVertexAttribPointer(posAttribLoc, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), 0);
-    glVertexAttribPointer(colAttribLoc, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal));
+    //glVertexAttribPointer(colAttribLoc, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal));
     glVertexAttribPointer(tcAttribLoc, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, texcoord));
     glVertexAttribPointer(normalAttribLoc, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal));
 
     glDrawElements(GL_TRIANGLES, Indices.size(), GL_UNSIGNED_INT, 0);
 
     glDisableVertexAttribArray(posAttribLoc);
-    glDisableVertexAttribArray(colAttribLoc);
+    //glDisableVertexAttribArray(colAttribLoc);
     glDisableVertexAttribArray(tcAttribLoc);
     glDisableVertexAttribArray(normalAttribLoc);
 }

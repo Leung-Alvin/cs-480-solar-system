@@ -15,6 +15,9 @@ class Camera
     void Update(float xOff, float yOff, bool left, bool right, bool up, bool down);
 	void setView(glm::mat4 newView) { view = newView; }
 
+	float getYaw() { return yaw; }
+	float getPitch() { return pitch; }
+
   
   private:
 

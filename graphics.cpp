@@ -88,6 +88,18 @@ float Graphics::getPlanetRadius(PlanetID planet) {
 	return glm::length(glm::vec3(model[0]));
 }
 
+void Graphics::SendMaterialToShader(Material* mat) {
+	if (mat != nullptr) {
+		glUniform4fv(mAmbLoc, 1, glm::value_ptr(mat->matAmbient));
+		glUniform4fv(mDiffLoc, 1, glm::value_ptr(mat->matDiffuse));
+		glUniform4fv(mSpecLoc, 1, glm::value_ptr(mat->matSpecular));
+		glUniform1f(mShineLoc, mat->matShininess.x);
+	}
+	else {
+		cout << "Warning: Attempted to send null material to shader!" << endl;
+	}
+}
+
 bool Graphics::Initialize(int width, int height)
 {
 	// Used for the linux OS
@@ -148,19 +160,49 @@ bool Graphics::Initialize(int width, int height)
 		printf("Program to Finalize\n");
 		return false;
 	}
-	glm::vec4 gAmb(0.2f, 0.2f, 0.2f, 1.0f);
-	glm::vec4 lAmb(1.0f, 1.0f, 1.0f, 1.0f);
+	glm::vec4 gAmb(0.7f, 0.7f, 0.7f, 1.0f);
+	glm::vec4 lAmb(0.3f, 0.3f, 0.3f, 1.0f);
 	glm::vec4 lDiff(0.8f, 0.8f, 0.8f, 1.0f);
 	glm::vec4 lSpec(0.9f, 0.9f, 0.9f, 0.9f);
 	glm::vec3 lPos(0.0f, 0.0f, 0.0f);
 
-	float matAmbient[4] = { 0.2f, 0.2f, 0.2f, 1.0f };
-	float matDiffuse[4] = { 0.8f, 0.8f, 0.8f, 1.0f };
-	float matSpecular[4] = { 0.9f, 0.9f, 0.9f, 0.9f };
-	float matShininess = 32.0f;
+	glm::vec4 matAmbient(0.2f, 0.2f, 0.2f, 1.0f);
+	glm::vec4 matDiffuse(0.8f, 0.8f, 0.8f, 1.0f);
+	glm::vec4 matSpecular(0.9f, 0.9f, 0.9f, 0.9f);
+	glm::vec1 matShininess(32.0f);
 
 	m_light = new Light(gAmb, lAmb, lDiff, lSpec, lPos, m_camera->GetView());
 	m_material = new Material(matAmbient, matDiffuse, matSpecular,matShininess);
+
+	m_rockyMaterial = new Material(
+		glm::vec4(0.1f, 0.1f, 0.1f, 1.0f),
+		glm::vec4(0.6f, 0.6f, 0.6f, 1.0f), 
+		glm::vec4(0.2f, 0.2f, 0.2f, 1.0f), 
+		glm::vec1(5.0f)                    
+	);
+
+
+	m_gasMaterial = new Material(
+		glm::vec4(0.2f, 0.2f, 0.2f, 1.0f),
+		glm::vec4(0.8f, 0.8f, 0.8f, 1.0f),
+		glm::vec4(0.1f, 0.1f, 0.1f, 1.0f), 
+		glm::vec1(2.0f)
+	);
+
+	m_sunMaterial = new Material(
+		glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), 
+		glm::vec4(1.0f, 1.0f, 1.0f, 1.0f),
+		glm::vec4(0.0f, 0.0f, 0.0f, 1.0f), 
+		glm::vec1(1.0f)
+	);
+
+	m_shipMaterial = new Material(
+		glm::vec4(0.2f, 0.2f, 0.2f, 1.0f),
+		glm::vec4(0.5f, 0.5f, 0.5f, 1.0f),
+		glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), 
+		glm::vec1(128.0f)                  
+	);
+
 	// Populate location bindings of the shader uniform/attribs
 	if (!collectShPrLocs()) {
 		printf("Some shader attribs not located!\n");
@@ -227,11 +269,11 @@ bool Graphics::Initialize(int width, int height)
 	m_skybox = new Mesh(glm::vec3(0.0f, 0.0f, 0.0f), "assets\\Galaxy-cubemap2.png");
 
 	m_asteroidCount = 50;
-	m_asteroids = new Asteroid("assets\\2k_moon.jpg");
+	m_asteroids = new Asteroid("assets\\2k_moon.jpg", "assets\\2k_moon-n.jpg");
 	//m_asteroids = new Asteroid("assets\\2k_moon.jpg", "assets\\2k_moon-n.jpg");
 
 	m_outerAsteroidCount = 150;
-	m_outerAsteroids = new Asteroid("assets\\2k_moon.jpg");
+	m_outerAsteroids = new Asteroid("assets\\2k_moon.jpg", "assets\\2k_moon-n.jpg");
 	//m_outerAsteroids = new Asteroid("assets\\2k_moon.jpg", "assets\\2k_moon-n.jpg");
 
 	//enable depth testing
@@ -685,22 +727,23 @@ void Graphics::Render()
 	// Start the correct program
 	m_shader->Enable();
 
-	glm::vec3 cameraPos = glm::vec3(m_camera->GetView()[3]);
+	glm::vec3 cameraPos = m_camera->GetView()[3];
 	GLint viewPosLoc = m_shader->GetUniformLocation("viewPos");
 	glUniform3fv(viewPosLoc, 1, glm::value_ptr(cameraPos));
+
 	if (m_light != nullptr) {
-		glUniform4fv(m_globalAmbLoc, 1, &m_light->m_globalAmbient[0]);
-		glUniform4fv(m_lightAmbLoc, 1, &m_light->m_lightAmbient[0]);
-		glUniform4fv(m_lightDiffLoc, 1, &m_light->m_lightDiffuse[0]);
-		glUniform4fv(m_lightSpecLoc, 1, &m_light->m_lightSpecular[0]);
-		glUniform3fv(m_lightPosLoc, 1, &m_light->m_lightPosition[0]);
+		glUniform4fv(m_globalAmbLoc, 1, glm::value_ptr(m_light->m_globalAmbient));
+		glUniform4fv(m_lightAmbLoc, 1, glm::value_ptr(m_light->m_lightAmbient));
+		glUniform4fv(m_lightDiffLoc, 1, glm::value_ptr(m_light->m_lightDiffuse));
+		glUniform4fv(m_lightSpecLoc, 1, glm::value_ptr(m_light->m_lightSpecular));
+		glUniform3fv(m_lightPosLoc, 1, glm::value_ptr(m_light->m_lightPosition));
 	}
 
 	if (m_material != nullptr) {
-		glUniform4fv(mAmbLoc, 1, &m_material->matAmbient[0]);
-		glUniform4fv(mDiffLoc, 1, &m_material->matDiffuse[0]);
-		glUniform4fv(mSpecLoc, 1, &m_material->matSpecular[0]);
-		glUniform1f(mShineLoc, m_material->matShininess);
+		glUniform4fv(mAmbLoc, 1, glm::value_ptr(m_material->matAmbient));
+		glUniform4fv(mDiffLoc, 1, glm::value_ptr(m_material->matDiffuse));
+		glUniform4fv(mSpecLoc, 1, glm::value_ptr(m_material->matSpecular));
+		glUniform1f(mShineLoc, m_material->matShininess.x);
 	}
 
 
@@ -709,6 +752,7 @@ void Graphics::Render()
 	// Send in the projection and view to the shader (stay the same while camera intrinsic(perspective) and extrinsic (view) parameters are the same
 	glUniformMatrix4fv(m_projectionMatrix, 1, GL_FALSE, glm::value_ptr(m_camera->GetProjection()));
 	glUniformMatrix4fv(m_viewMatrix, 1, GL_FALSE, glm::value_ptr(m_camera->GetView()));
+	//std::cout << "PROJ: " << m_projectionMatrix << " VIEW: " << m_viewMatrix << std::endl;
 
 
 	if (m_skybox != NULL) {
@@ -744,6 +788,14 @@ void Graphics::Render()
 	//	}
 	//}
 	if (m_mesh != NULL && m_showShip) {
+
+		SendMaterialToShader(m_shipMaterial);
+
+		glUniform1i(m_isSunLoc, 0);
+		glUniform1i(m_isShipLoc, 1);
+		glUniform1f(m_shipSpeedRatioLoc, m_shipSpeedRatio);
+
+
 		glUniform1i(m_hasTexture, false);
 		glm::mat4 modelView = m_camera->GetView() * m_mesh->GetModel();
 		glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(modelView)));
@@ -774,10 +826,12 @@ void Graphics::Render()
 			glUniform1i(hasN, true);
 		}
 		m_mesh->Render(m_positionAttrib, m_colorAttrib, m_tcAttrib, m_hasTexture, m_normalAttrib);
+		glUniform1i(m_isShipLoc, 0);
 	}
 
 	// Render Sun
 	if (m_sun != NULL) {
+		SendMaterialToShader(m_sunMaterial);
 		glUniform1i(m_isSunLoc, 1);
 		glUniformMatrix4fv(m_modelMatrix, 1, GL_FALSE, glm::value_ptr(m_sun->GetModel()));
 		if (m_sun->hasTex) {
@@ -798,40 +852,97 @@ void Graphics::Render()
 
 	// Render Mercury
 	if (m_mercury != NULL) {
+
+		SendMaterialToShader(m_rockyMaterial);
+
+		glUniform1i(m_isSunLoc, 0);
+		glUniform1i(m_isShipLoc, 0);
+
+
+		glUniform1i(m_hasTexture, false);
+		glm::mat4 modelView = m_camera->GetView() * m_mercury->GetModel();
+		glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(modelView)));
+
 		glUniformMatrix4fv(m_modelMatrix, 1, GL_FALSE, glm::value_ptr(m_mercury->GetModel()));
-		if (m_mercury->hasTex) {
-			glUniform1i(m_hasTexture, 1);
+
+		GLuint hasN = m_shader->GetUniformLocation("hasNormalMap");
+		if (m_mercury->getTextureID()) {
 			glActiveTexture(GL_TEXTURE0);
 			glBindTexture(GL_TEXTURE_2D, m_mercury->getTextureID());
 			GLuint sampler = m_shader->GetUniformLocation("sp");
-			if (sampler == INVALID_UNIFORM_LOCATION)
-			{
+			if (sampler == INVALID_UNIFORM_LOCATION) {
 				printf("Sampler Not found not found\n");
 			}
+			glUseProgram(m_shader->GetShaderProgram());
 			glUniform1i(sampler, 0);
-			m_mercury->Render(m_positionAttrib, m_colorAttrib, m_tcAttrib, m_hasTexture, m_normalAttrib);
+			glUniform1i(hasN, false);
 		}
+		if (m_mercury->getNormalID()) {
+			glActiveTexture(GL_TEXTURE1);
+			glBindTexture(GL_TEXTURE_2D, m_mercury->getNormalID());
+			GLuint normalSampler = m_shader->GetUniformLocation("sp2");
+			if (normalSampler == INVALID_UNIFORM_LOCATION) {
+				printf("Normal Sampler Not found not found\n");
+			}
+			glUseProgram(m_shader->GetShaderProgram());
+			glUniform1i(normalSampler, 1);
+			glUniform1i(hasN, true);
+		}
+		m_mercury->Render(m_positionAttrib, m_colorAttrib, m_tcAttrib, m_hasTexture, m_normalAttrib);
 	}
 
 	// Render Venus
 	if (m_venus != NULL) {
+
+		SendMaterialToShader(m_rockyMaterial);
+
+		glUniform1i(m_isSunLoc, 0);
+		glUniform1i(m_isShipLoc, 0);
+
+
+		glUniform1i(m_hasTexture, false);
+		glm::mat4 modelView = m_camera->GetView() * m_venus->GetModel();
+		glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(modelView)));
+
 		glUniformMatrix4fv(m_modelMatrix, 1, GL_FALSE, glm::value_ptr(m_venus->GetModel()));
-		if (m_venus->hasTex) {
-			glUniform1i(m_hasTexture, 1);
+
+		GLuint hasN = m_shader->GetUniformLocation("hasNormalMap");
+		if (m_venus->getTextureID()) {
 			glActiveTexture(GL_TEXTURE0);
 			glBindTexture(GL_TEXTURE_2D, m_venus->getTextureID());
 			GLuint sampler = m_shader->GetUniformLocation("sp");
-			if (sampler == INVALID_UNIFORM_LOCATION)
-			{
+			if (sampler == INVALID_UNIFORM_LOCATION) {
 				printf("Sampler Not found not found\n");
 			}
+			glUseProgram(m_shader->GetShaderProgram());
 			glUniform1i(sampler, 0);
-			m_venus->Render(m_positionAttrib, m_colorAttrib, m_tcAttrib, m_hasTexture, m_normalAttrib);
+			glUniform1i(hasN, false);
 		}
+		if (m_venus->getNormalID()) {
+			glActiveTexture(GL_TEXTURE1);
+			glBindTexture(GL_TEXTURE_2D, m_venus->getNormalID());
+			GLuint normalSampler = m_shader->GetUniformLocation("sp2");
+			if (normalSampler == INVALID_UNIFORM_LOCATION) {
+				printf("Normal Sampler Not found not found\n");
+			}
+			glUseProgram(m_shader->GetShaderProgram());
+			glUniform1i(normalSampler, 1);
+			glUniform1i(hasN, true);
+		}
+		m_venus->Render(m_positionAttrib, m_colorAttrib, m_tcAttrib, m_hasTexture, m_normalAttrib);
 	}
-
-	// Render Earth
 	if (m_earth != NULL) {
+
+		SendMaterialToShader(m_rockyMaterial);
+
+		glUniform1i(m_isSunLoc, 0);
+		glUniform1i(m_isShipLoc, 0);
+
+
+		glUniform1i(m_hasTexture, false);
+		glm::mat4 modelView = m_camera->GetView() * m_earth->GetModel();
+		glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(modelView)));
+
 		glUniformMatrix4fv(m_modelMatrix, 1, GL_FALSE, glm::value_ptr(m_earth->GetModel()));
 
 		GLuint hasN = m_shader->GetUniformLocation("hasNormalMap");
@@ -860,89 +971,225 @@ void Graphics::Render()
 		m_earth->Render(m_positionAttrib, m_colorAttrib, m_tcAttrib, m_hasTexture, m_normalAttrib);
 	}
 
-	// Render Moon
 	if (m_moon != NULL) {
+
+		SendMaterialToShader(m_rockyMaterial);
+
+		glUniform1i(m_isSunLoc, 0);
+		glUniform1i(m_isShipLoc, 0);
+
+
+		glUniform1i(m_hasTexture, false);
+		glm::mat4 modelView = m_camera->GetView() * m_moon->GetModel();
+		glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(modelView)));
+
 		glUniformMatrix4fv(m_modelMatrix, 1, GL_FALSE, glm::value_ptr(m_moon->GetModel()));
-		if (m_moon->hasTex) {
-			glUniform1i(m_hasTexture, 1);
+
+		GLuint hasN = m_shader->GetUniformLocation("hasNormalMap");
+		if (m_moon->getTextureID()) {
 			glActiveTexture(GL_TEXTURE0);
 			glBindTexture(GL_TEXTURE_2D, m_moon->getTextureID());
 			GLuint sampler = m_shader->GetUniformLocation("sp");
-			if (sampler == INVALID_UNIFORM_LOCATION)
-			{
+			if (sampler == INVALID_UNIFORM_LOCATION) {
 				printf("Sampler Not found not found\n");
 			}
+			glUseProgram(m_shader->GetShaderProgram());
 			glUniform1i(sampler, 0);
-			m_moon->Render(m_positionAttrib, m_colorAttrib, m_tcAttrib, m_hasTexture, m_normalAttrib);
+			glUniform1i(hasN, false);
 		}
+		if (m_moon->getNormalID()) {
+			glActiveTexture(GL_TEXTURE1);
+			glBindTexture(GL_TEXTURE_2D, m_moon->getNormalID());
+			GLuint normalSampler = m_shader->GetUniformLocation("sp2");
+			if (normalSampler == INVALID_UNIFORM_LOCATION) {
+				printf("Normal Sampler Not found not found\n");
+			}
+			glUseProgram(m_shader->GetShaderProgram());
+			glUniform1i(normalSampler, 1);
+			glUniform1i(hasN, true);
+		}
+		m_moon->Render(m_positionAttrib, m_colorAttrib, m_tcAttrib, m_hasTexture, m_normalAttrib);
 	}
+
 
 	// Render Mars
 	if (m_mars != NULL) {
+
+		SendMaterialToShader(m_rockyMaterial);
+
+		glUniform1i(m_isSunLoc, 0);
+		glUniform1i(m_isShipLoc, 0);
+
+
+		glUniform1i(m_hasTexture, false);
+		glm::mat4 modelView = m_camera->GetView() * m_mars->GetModel();
+		glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(modelView)));
+
 		glUniformMatrix4fv(m_modelMatrix, 1, GL_FALSE, glm::value_ptr(m_mars->GetModel()));
-		if (m_mars->hasTex) {
-			glUniform1i(m_hasTexture, 1);
+
+		GLuint hasN = m_shader->GetUniformLocation("hasNormalMap");
+		if (m_mars->getTextureID()) {
 			glActiveTexture(GL_TEXTURE0);
 			glBindTexture(GL_TEXTURE_2D, m_mars->getTextureID());
 			GLuint sampler = m_shader->GetUniformLocation("sp");
-			if (sampler == INVALID_UNIFORM_LOCATION)
-			{
+			if (sampler == INVALID_UNIFORM_LOCATION) {
 				printf("Sampler Not found not found\n");
 			}
+			glUseProgram(m_shader->GetShaderProgram());
 			glUniform1i(sampler, 0);
-			m_mars->Render(m_positionAttrib, m_colorAttrib, m_tcAttrib, m_hasTexture, m_normalAttrib);
+			glUniform1i(hasN, false);
 		}
+		if (m_mars->getNormalID()) {
+			glActiveTexture(GL_TEXTURE1);
+			glBindTexture(GL_TEXTURE_2D, m_mars->getNormalID());
+			GLuint normalSampler = m_shader->GetUniformLocation("sp2");
+			if (normalSampler == INVALID_UNIFORM_LOCATION) {
+				printf("Normal Sampler Not found not found\n");
+			}
+			glUseProgram(m_shader->GetShaderProgram());
+			glUniform1i(normalSampler, 1);
+			glUniform1i(hasN, true);
+		}
+		m_mars->Render(m_positionAttrib, m_colorAttrib, m_tcAttrib, m_hasTexture, m_normalAttrib);
 	}
 
 	// Render Jupiter
+	//if (m_jupiter != NULL) {
+	//	SendMaterialToShader(m_gasMaterial);
+	//	glUniformMatrix4fv(m_modelMatrix, 1, GL_FALSE, glm::value_ptr(m_jupiter->GetModel()));
+	//	if (m_jupiter->hasTex) {
+	//		glUniform1i(m_hasTexture, 1);
+	//		glActiveTexture(GL_TEXTURE0);
+	//		glBindTexture(GL_TEXTURE_2D, m_jupiter->getTextureID());
+	//		GLuint sampler = m_shader->GetUniformLocation("sp");
+	//		if (sampler == INVALID_UNIFORM_LOCATION)
+	//		{
+	//			printf("Sampler Not found not found\n");
+	//		}
+	//		glUniform1i(sampler, 0);
+	//		m_jupiter->Render(m_positionAttrib, m_colorAttrib, m_tcAttrib, m_hasTexture, m_normalAttrib);
+	//	}
+	//}
 	if (m_jupiter != NULL) {
+
+		SendMaterialToShader(m_gasMaterial);
+
+		glUniform1i(m_isSunLoc, 0);
+		glUniform1i(m_isShipLoc, 0);
+
+
+		glUniform1i(m_hasTexture, false);
+		glm::mat4 modelView = m_camera->GetView() * m_jupiter->GetModel();
+		glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(modelView)));
+
 		glUniformMatrix4fv(m_modelMatrix, 1, GL_FALSE, glm::value_ptr(m_jupiter->GetModel()));
-		if (m_jupiter->hasTex) {
-			glUniform1i(m_hasTexture, 1);
+
+		GLuint hasN = m_shader->GetUniformLocation("hasNormalMap");
+		if (m_jupiter->getTextureID()) {
 			glActiveTexture(GL_TEXTURE0);
 			glBindTexture(GL_TEXTURE_2D, m_jupiter->getTextureID());
 			GLuint sampler = m_shader->GetUniformLocation("sp");
-			if (sampler == INVALID_UNIFORM_LOCATION)
-			{
+			if (sampler == INVALID_UNIFORM_LOCATION) {
 				printf("Sampler Not found not found\n");
 			}
+			glUseProgram(m_shader->GetShaderProgram());
 			glUniform1i(sampler, 0);
-			m_jupiter->Render(m_positionAttrib, m_colorAttrib, m_tcAttrib, m_hasTexture, m_normalAttrib);
+			glUniform1i(hasN, false);
 		}
+		if (m_jupiter->getNormalID()) {
+			glActiveTexture(GL_TEXTURE1);
+			glBindTexture(GL_TEXTURE_2D, m_jupiter->getNormalID());
+			GLuint normalSampler = m_shader->GetUniformLocation("sp2");
+			if (normalSampler == INVALID_UNIFORM_LOCATION) {
+				printf("Normal Sampler Not found not found\n");
+			}
+			glUseProgram(m_shader->GetShaderProgram());
+			glUniform1i(normalSampler, 1);
+			glUniform1i(hasN, true);
+		}
+		m_jupiter->Render(m_positionAttrib, m_colorAttrib, m_tcAttrib, m_hasTexture, m_normalAttrib);
 	}
 
 
 	if (m_moon1 != NULL) {
+
+		SendMaterialToShader(m_rockyMaterial);
+
+		glUniform1i(m_isSunLoc, 0);
+		glUniform1i(m_isShipLoc, 0);
+
+
+		glUniform1i(m_hasTexture, false);
+		glm::mat4 modelView = m_camera->GetView() * m_moon1->GetModel();
+		glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(modelView)));
+
 		glUniformMatrix4fv(m_modelMatrix, 1, GL_FALSE, glm::value_ptr(m_moon1->GetModel()));
-		if (m_moon1->hasTex) {
-			glUniform1i(m_hasTexture, 1);
+
+		GLuint hasN = m_shader->GetUniformLocation("hasNormalMap");
+		if (m_moon1->getTextureID()) {
 			glActiveTexture(GL_TEXTURE0);
 			glBindTexture(GL_TEXTURE_2D, m_moon1->getTextureID());
 			GLuint sampler = m_shader->GetUniformLocation("sp");
-			if (sampler == INVALID_UNIFORM_LOCATION)
-			{
+			if (sampler == INVALID_UNIFORM_LOCATION) {
 				printf("Sampler Not found not found\n");
 			}
+			glUseProgram(m_shader->GetShaderProgram());
 			glUniform1i(sampler, 0);
-			m_moon1->Render(m_positionAttrib, m_colorAttrib, m_tcAttrib, m_hasTexture, m_normalAttrib);
+			glUniform1i(hasN, false);
 		}
+		if (m_moon1->getNormalID()) {
+			glActiveTexture(GL_TEXTURE1);
+			glBindTexture(GL_TEXTURE_2D, m_moon1->getNormalID());
+			GLuint normalSampler = m_shader->GetUniformLocation("sp2");
+			if (normalSampler == INVALID_UNIFORM_LOCATION) {
+				printf("Normal Sampler Not found not found\n");
+			}
+			glUseProgram(m_shader->GetShaderProgram());
+			glUniform1i(normalSampler, 1);
+			glUniform1i(hasN, true);
+		}
+		m_moon1->Render(m_positionAttrib, m_colorAttrib, m_tcAttrib, m_hasTexture, m_normalAttrib);
 	}
 
 	// Render Moon
 	if (m_moon2 != NULL) {
+
+		SendMaterialToShader(m_rockyMaterial);
+
+		glUniform1i(m_isSunLoc, 0);
+		glUniform1i(m_isShipLoc, 0);
+
+
+		glUniform1i(m_hasTexture, false);
+		glm::mat4 modelView = m_camera->GetView() * m_moon2->GetModel();
+		glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(modelView)));
+
 		glUniformMatrix4fv(m_modelMatrix, 1, GL_FALSE, glm::value_ptr(m_moon2->GetModel()));
-		if (m_moon2->hasTex) {
-			glUniform1i(m_hasTexture, 1);
+
+		GLuint hasN = m_shader->GetUniformLocation("hasNormalMap");
+		if (m_moon2->getTextureID()) {
 			glActiveTexture(GL_TEXTURE0);
 			glBindTexture(GL_TEXTURE_2D, m_moon2->getTextureID());
 			GLuint sampler = m_shader->GetUniformLocation("sp");
-			if (sampler == INVALID_UNIFORM_LOCATION)
-			{
+			if (sampler == INVALID_UNIFORM_LOCATION) {
 				printf("Sampler Not found not found\n");
 			}
+			glUseProgram(m_shader->GetShaderProgram());
 			glUniform1i(sampler, 0);
-			m_moon2->Render(m_positionAttrib, m_colorAttrib, m_tcAttrib, m_hasTexture, m_normalAttrib);
+			glUniform1i(hasN, false);
 		}
+		if (m_moon2->getNormalID()) {
+			glActiveTexture(GL_TEXTURE1);
+			glBindTexture(GL_TEXTURE_2D, m_moon2->getNormalID());
+			GLuint normalSampler = m_shader->GetUniformLocation("sp2");
+			if (normalSampler == INVALID_UNIFORM_LOCATION) {
+				printf("Normal Sampler Not found not found\n");
+			}
+			glUseProgram(m_shader->GetShaderProgram());
+			glUniform1i(normalSampler, 1);
+			glUniform1i(hasN, true);
+		}
+		m_moon2->Render(m_positionAttrib, m_colorAttrib, m_tcAttrib, m_hasTexture, m_normalAttrib);
 	}
 
 
@@ -950,162 +1197,384 @@ void Graphics::Render()
 
 	// Render Saturn
 	if (m_saturn != NULL) {
+
+		SendMaterialToShader(m_gasMaterial);
+
+		glUniform1i(m_isSunLoc, 0);
+		glUniform1i(m_isShipLoc, 0);
+
+
+		glUniform1i(m_hasTexture, false);
+		glm::mat4 modelView = m_camera->GetView() * m_saturn->GetModel();
+		glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(modelView)));
+
 		glUniformMatrix4fv(m_modelMatrix, 1, GL_FALSE, glm::value_ptr(m_saturn->GetModel()));
-		if (m_saturn->hasTex) {
-			glUniform1i(m_hasTexture, 1);
+
+		GLuint hasN = m_shader->GetUniformLocation("hasNormalMap");
+		if (m_saturn->getTextureID()) {
 			glActiveTexture(GL_TEXTURE0);
 			glBindTexture(GL_TEXTURE_2D, m_saturn->getTextureID());
 			GLuint sampler = m_shader->GetUniformLocation("sp");
-			if (sampler == INVALID_UNIFORM_LOCATION)
-			{
+			if (sampler == INVALID_UNIFORM_LOCATION) {
 				printf("Sampler Not found not found\n");
 			}
+			glUseProgram(m_shader->GetShaderProgram());
 			glUniform1i(sampler, 0);
-			m_saturn->Render(m_positionAttrib, m_colorAttrib, m_tcAttrib, m_hasTexture, m_normalAttrib);
+			glUniform1i(hasN, false);
 		}
+		//if (m_saturn->getNormalID()) {
+		//	glActiveTexture(GL_TEXTURE1);
+		//	glBindTexture(GL_TEXTURE_2D, m_saturn->getNormalID());
+		//	GLuint normalSampler = m_shader->GetUniformLocation("sp2");
+		//	if (normalSampler == INVALID_UNIFORM_LOCATION) {
+		//		printf("Normal Sampler Not found not found\n");
+		//	}
+		//	glUseProgram(m_shader->GetShaderProgram());
+		//	glUniform1i(normalSampler, 1);
+		//	glUniform1i(hasN, true);
+		//}
+		m_saturn->Render(m_positionAttrib, m_colorAttrib, m_tcAttrib, m_hasTexture, m_normalAttrib);
 	}
 
 	if (m_moon3 != NULL) {
+
+		SendMaterialToShader(m_rockyMaterial);
+
+		glUniform1i(m_isSunLoc, 0);
+		glUniform1i(m_isShipLoc, 0);
+
+
+		glUniform1i(m_hasTexture, false);
+		glm::mat4 modelView = m_camera->GetView() * m_moon3->GetModel();
+		glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(modelView)));
+
 		glUniformMatrix4fv(m_modelMatrix, 1, GL_FALSE, glm::value_ptr(m_moon3->GetModel()));
-		if (m_moon3->hasTex) {
-			glUniform1i(m_hasTexture, 1);
+
+		GLuint hasN = m_shader->GetUniformLocation("hasNormalMap");
+		if (m_moon3->getTextureID()) {
 			glActiveTexture(GL_TEXTURE0);
 			glBindTexture(GL_TEXTURE_2D, m_moon3->getTextureID());
 			GLuint sampler = m_shader->GetUniformLocation("sp");
-			if (sampler == INVALID_UNIFORM_LOCATION)
-			{
+			if (sampler == INVALID_UNIFORM_LOCATION) {
 				printf("Sampler Not found not found\n");
 			}
+			glUseProgram(m_shader->GetShaderProgram());
 			glUniform1i(sampler, 0);
-			m_moon3->Render(m_positionAttrib, m_colorAttrib, m_tcAttrib, m_hasTexture, m_normalAttrib);
+			glUniform1i(hasN, false);
 		}
+		if (m_moon3->getNormalID()) {
+			glActiveTexture(GL_TEXTURE1);
+			glBindTexture(GL_TEXTURE_2D, m_moon3->getNormalID());
+			GLuint normalSampler = m_shader->GetUniformLocation("sp2");
+			if (normalSampler == INVALID_UNIFORM_LOCATION) {
+				printf("Normal Sampler Not found not found\n");
+			}
+			glUseProgram(m_shader->GetShaderProgram());
+			glUniform1i(normalSampler, 1);
+			glUniform1i(hasN, true);
+		}
+		m_moon3->Render(m_positionAttrib, m_colorAttrib, m_tcAttrib, m_hasTexture, m_normalAttrib);
 	}
 
-	// Render moon
 	if (m_moon4 != NULL) {
+
+		SendMaterialToShader(m_rockyMaterial);
+
+		glUniform1i(m_isSunLoc, 0);
+		glUniform1i(m_isShipLoc, 0);
+
+
+		glUniform1i(m_hasTexture, false);
+		glm::mat4 modelView = m_camera->GetView() * m_moon4->GetModel();
+		glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(modelView)));
+
 		glUniformMatrix4fv(m_modelMatrix, 1, GL_FALSE, glm::value_ptr(m_moon4->GetModel()));
-		if (m_moon4->hasTex) {
-			glUniform1i(m_hasTexture, 1);
+
+		GLuint hasN = m_shader->GetUniformLocation("hasNormalMap");
+		if (m_moon4->getTextureID()) {
 			glActiveTexture(GL_TEXTURE0);
 			glBindTexture(GL_TEXTURE_2D, m_moon4->getTextureID());
 			GLuint sampler = m_shader->GetUniformLocation("sp");
-			if (sampler == INVALID_UNIFORM_LOCATION)
-			{
+			if (sampler == INVALID_UNIFORM_LOCATION) {
 				printf("Sampler Not found not found\n");
 			}
+			glUseProgram(m_shader->GetShaderProgram());
 			glUniform1i(sampler, 0);
-			m_moon4->Render(m_positionAttrib, m_colorAttrib, m_tcAttrib, m_hasTexture, m_normalAttrib);
+			glUniform1i(hasN, false);
 		}
+		if (m_moon4->getNormalID()) {
+			glActiveTexture(GL_TEXTURE1);
+			glBindTexture(GL_TEXTURE_2D, m_moon4->getNormalID());
+			GLuint normalSampler = m_shader->GetUniformLocation("sp2");
+			if (normalSampler == INVALID_UNIFORM_LOCATION) {
+				printf("Normal Sampler Not found not found\n");
+			}
+			glUseProgram(m_shader->GetShaderProgram());
+			glUniform1i(normalSampler, 1);
+			glUniform1i(hasN, true);
+		}
+		m_moon4->Render(m_positionAttrib, m_colorAttrib, m_tcAttrib, m_hasTexture, m_normalAttrib);
 	}
-
 
 
 	// Render Uranus
 	if (m_uranus != NULL) {
+
+		SendMaterialToShader(m_gasMaterial);
+
+		glUniform1i(m_isSunLoc, 0);
+		glUniform1i(m_isShipLoc, 0);
+
+
+		glUniform1i(m_hasTexture, false);
+		glm::mat4 modelView = m_camera->GetView() * m_uranus->GetModel();
+		glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(modelView)));
+
 		glUniformMatrix4fv(m_modelMatrix, 1, GL_FALSE, glm::value_ptr(m_uranus->GetModel()));
-		if (m_uranus->hasTex) {
-			glUniform1i(m_hasTexture, 1);
+
+		GLuint hasN = m_shader->GetUniformLocation("hasNormalMap");
+		if (m_uranus->getTextureID()) {
 			glActiveTexture(GL_TEXTURE0);
 			glBindTexture(GL_TEXTURE_2D, m_uranus->getTextureID());
 			GLuint sampler = m_shader->GetUniformLocation("sp");
-			if (sampler == INVALID_UNIFORM_LOCATION)
-			{
+			if (sampler == INVALID_UNIFORM_LOCATION) {
 				printf("Sampler Not found not found\n");
 			}
+			glUseProgram(m_shader->GetShaderProgram());
 			glUniform1i(sampler, 0);
-			m_uranus->Render(m_positionAttrib, m_colorAttrib, m_tcAttrib, m_hasTexture, m_normalAttrib);
+			glUniform1i(hasN, false);
 		}
+		if (m_uranus->getNormalID()) {
+			glActiveTexture(GL_TEXTURE1);
+			glBindTexture(GL_TEXTURE_2D, m_uranus->getNormalID());
+			GLuint normalSampler = m_shader->GetUniformLocation("sp2");
+			if (normalSampler == INVALID_UNIFORM_LOCATION) {
+				printf("Normal Sampler Not found not found\n");
+			}
+			glUseProgram(m_shader->GetShaderProgram());
+			glUniform1i(normalSampler, 1);
+			glUniform1i(hasN, true);
+		}
+		m_uranus->Render(m_positionAttrib, m_colorAttrib, m_tcAttrib, m_hasTexture, m_normalAttrib);
 	}
 
 	// Render Neptune
 	if (m_neptune != NULL) {
+
+		SendMaterialToShader(m_gasMaterial);
+
+		glUniform1i(m_isSunLoc, 0);
+		glUniform1i(m_isShipLoc, 0);
+
+
+		glUniform1i(m_hasTexture, false);
+		glm::mat4 modelView = m_camera->GetView() * m_neptune->GetModel();
+		glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(modelView)));
+
 		glUniformMatrix4fv(m_modelMatrix, 1, GL_FALSE, glm::value_ptr(m_neptune->GetModel()));
-		if (m_neptune->hasTex) {
-			glUniform1i(m_hasTexture, 1);
+
+		GLuint hasN = m_shader->GetUniformLocation("hasNormalMap");
+		if (m_neptune->getTextureID()) {
 			glActiveTexture(GL_TEXTURE0);
 			glBindTexture(GL_TEXTURE_2D, m_neptune->getTextureID());
 			GLuint sampler = m_shader->GetUniformLocation("sp");
-			if (sampler == INVALID_UNIFORM_LOCATION)
-			{
+			if (sampler == INVALID_UNIFORM_LOCATION) {
 				printf("Sampler Not found not found\n");
 			}
+			glUseProgram(m_shader->GetShaderProgram());
 			glUniform1i(sampler, 0);
-			m_neptune->Render(m_positionAttrib, m_colorAttrib, m_tcAttrib, m_hasTexture, m_normalAttrib);
+			glUniform1i(hasN, false);
 		}
+		if (m_neptune->getNormalID()) {
+			glActiveTexture(GL_TEXTURE1);
+			glBindTexture(GL_TEXTURE_2D, m_neptune->getNormalID());
+			GLuint normalSampler = m_shader->GetUniformLocation("sp2");
+			if (normalSampler == INVALID_UNIFORM_LOCATION) {
+				printf("Normal Sampler Not found not found\n");
+			}
+			glUseProgram(m_shader->GetShaderProgram());
+			glUniform1i(normalSampler, 1);
+			glUniform1i(hasN, true);
+		}
+		m_neptune->Render(m_positionAttrib, m_colorAttrib, m_tcAttrib, m_hasTexture, m_normalAttrib);
 	}
 
 	// Render Ceres
 	if (m_ceres != NULL) {
+
+		SendMaterialToShader(m_rockyMaterial);
+
+		glUniform1i(m_isSunLoc, 0);
+		glUniform1i(m_isShipLoc, 0);
+
+
+		glUniform1i(m_hasTexture, false);
+		glm::mat4 modelView = m_camera->GetView() * m_ceres->GetModel();
+		glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(modelView)));
+
 		glUniformMatrix4fv(m_modelMatrix, 1, GL_FALSE, glm::value_ptr(m_ceres->GetModel()));
-		if (m_ceres->hasTex) {
-			glUniform1i(m_hasTexture, 1);
+
+		GLuint hasN = m_shader->GetUniformLocation("hasNormalMap");
+		if (m_ceres->getTextureID()) {
 			glActiveTexture(GL_TEXTURE0);
 			glBindTexture(GL_TEXTURE_2D, m_ceres->getTextureID());
 			GLuint sampler = m_shader->GetUniformLocation("sp");
-			if (sampler == INVALID_UNIFORM_LOCATION)
-			{
+			if (sampler == INVALID_UNIFORM_LOCATION) {
 				printf("Sampler Not found not found\n");
 			}
+			glUseProgram(m_shader->GetShaderProgram());
 			glUniform1i(sampler, 0);
-			m_ceres->Render(m_positionAttrib, m_colorAttrib, m_tcAttrib, m_hasTexture, m_normalAttrib);
+			glUniform1i(hasN, false);
 		}
+		if (m_ceres->getNormalID()) {
+			glActiveTexture(GL_TEXTURE1);
+			glBindTexture(GL_TEXTURE_2D, m_ceres->getNormalID());
+			GLuint normalSampler = m_shader->GetUniformLocation("sp2");
+			if (normalSampler == INVALID_UNIFORM_LOCATION) {
+				printf("Normal Sampler Not found not found\n");
+			}
+			glUseProgram(m_shader->GetShaderProgram());
+			glUniform1i(normalSampler, 1);
+			glUniform1i(hasN, true);
+		}
+		m_ceres->Render(m_positionAttrib, m_colorAttrib, m_tcAttrib, m_hasTexture, m_normalAttrib);
 	}
 
 	// Render Eris
 	if (m_eris != NULL) {
+
+		SendMaterialToShader(m_rockyMaterial);
+
+		glUniform1i(m_isSunLoc, 0);
+		glUniform1i(m_isShipLoc, 0);
+
+
+		glUniform1i(m_hasTexture, false);
+		glm::mat4 modelView = m_camera->GetView() * m_eris->GetModel();
+		glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(modelView)));
+
 		glUniformMatrix4fv(m_modelMatrix, 1, GL_FALSE, glm::value_ptr(m_eris->GetModel()));
-		if (m_eris->hasTex) {
-			glUniform1i(m_hasTexture, 1);
+
+		GLuint hasN = m_shader->GetUniformLocation("hasNormalMap");
+		if (m_eris->getTextureID()) {
 			glActiveTexture(GL_TEXTURE0);
 			glBindTexture(GL_TEXTURE_2D, m_eris->getTextureID());
 			GLuint sampler = m_shader->GetUniformLocation("sp");
-			if (sampler == INVALID_UNIFORM_LOCATION)
-			{
+			if (sampler == INVALID_UNIFORM_LOCATION) {
 				printf("Sampler Not found not found\n");
 			}
+			glUseProgram(m_shader->GetShaderProgram());
 			glUniform1i(sampler, 0);
-			m_eris->Render(m_positionAttrib, m_colorAttrib, m_tcAttrib, m_hasTexture, m_normalAttrib);
+			glUniform1i(hasN, false);
 		}
+		if (m_eris->getNormalID()) {
+			glActiveTexture(GL_TEXTURE1);
+			glBindTexture(GL_TEXTURE_2D, m_eris->getNormalID());
+			GLuint normalSampler = m_shader->GetUniformLocation("sp2");
+			if (normalSampler == INVALID_UNIFORM_LOCATION) {
+				printf("Normal Sampler Not found not found\n");
+			}
+			glUseProgram(m_shader->GetShaderProgram());
+			glUniform1i(normalSampler, 1);
+			glUniform1i(hasN, true);
+		}
+		m_eris->Render(m_positionAttrib, m_colorAttrib, m_tcAttrib, m_hasTexture, m_normalAttrib);
 	}
 
 	// Render Haumea
 	if (m_haumea != NULL) {
+
+		SendMaterialToShader(m_rockyMaterial);
+
+		glUniform1i(m_isSunLoc, 0);
+		glUniform1i(m_isShipLoc, 0);
+
+
+		glUniform1i(m_hasTexture, false);
+		glm::mat4 modelView = m_camera->GetView() * m_haumea->GetModel();
+		glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(modelView)));
+
 		glUniformMatrix4fv(m_modelMatrix, 1, GL_FALSE, glm::value_ptr(m_haumea->GetModel()));
-		if (m_haumea->hasTex) {
-			glUniform1i(m_hasTexture, 1);
+
+		GLuint hasN = m_shader->GetUniformLocation("hasNormalMap");
+		if (m_haumea->getTextureID()) {
 			glActiveTexture(GL_TEXTURE0);
 			glBindTexture(GL_TEXTURE_2D, m_haumea->getTextureID());
 			GLuint sampler = m_shader->GetUniformLocation("sp");
-			if (sampler == INVALID_UNIFORM_LOCATION)
-			{
+			if (sampler == INVALID_UNIFORM_LOCATION) {
 				printf("Sampler Not found not found\n");
 			}
+			glUseProgram(m_shader->GetShaderProgram());
 			glUniform1i(sampler, 0);
-			m_haumea->Render(m_positionAttrib, m_colorAttrib, m_tcAttrib, m_hasTexture, m_normalAttrib);
+			glUniform1i(hasN, false);
 		}
+		if (m_haumea->getNormalID()) {
+			glActiveTexture(GL_TEXTURE1);
+			glBindTexture(GL_TEXTURE_2D, m_haumea->getNormalID());
+			GLuint normalSampler = m_shader->GetUniformLocation("sp2");
+			if (normalSampler == INVALID_UNIFORM_LOCATION) {
+				printf("Normal Sampler Not found not found\n");
+			}
+			glUseProgram(m_shader->GetShaderProgram());
+			glUniform1i(normalSampler, 1);
+			glUniform1i(hasN, true);
+		}
+		m_haumea->Render(m_positionAttrib, m_colorAttrib, m_tcAttrib, m_hasTexture, m_normalAttrib);
 	}
 
 	if (m_comet != NULL) {
+
+		SendMaterialToShader(m_rockyMaterial);
+
+		glUniform1i(m_isSunLoc, 0);
+		glUniform1i(m_isShipLoc, 0);
+
+
+		glUniform1i(m_hasTexture, false);
+		glm::mat4 modelView = m_camera->GetView() * m_comet->GetModel();
+		glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(modelView)));
+
 		glUniformMatrix4fv(m_modelMatrix, 1, GL_FALSE, glm::value_ptr(m_comet->GetModel()));
-		if (m_comet->hasTex) {
-			glUniform1i(m_hasTexture, 1);
+
+		GLuint hasN = m_shader->GetUniformLocation("hasNormalMap");
+		if (m_comet->getTextureID()) {
 			glActiveTexture(GL_TEXTURE0);
 			glBindTexture(GL_TEXTURE_2D, m_comet->getTextureID());
 			GLuint sampler = m_shader->GetUniformLocation("sp");
-			if (sampler == INVALID_UNIFORM_LOCATION)
-			{
-				printf("Sampler Not found\n");
+			if (sampler == INVALID_UNIFORM_LOCATION) {
+				printf("Sampler Not found not found\n");
 			}
+			glUseProgram(m_shader->GetShaderProgram());
 			glUniform1i(sampler, 0);
-			m_comet->Render(m_positionAttrib, m_colorAttrib, m_tcAttrib, m_hasTexture, m_normalAttrib);
+			glUniform1i(hasN, false);
 		}
+		if (m_comet->getNormalID()) {
+			glActiveTexture(GL_TEXTURE1);
+			glBindTexture(GL_TEXTURE_2D, m_comet->getNormalID());
+			GLuint normalSampler = m_shader->GetUniformLocation("sp2");
+			if (normalSampler == INVALID_UNIFORM_LOCATION) {
+				printf("Normal Sampler Not found not found\n");
+			}
+			glUseProgram(m_shader->GetShaderProgram());
+			glUniform1i(normalSampler, 1);
+			glUniform1i(hasN, true);
+		}
+		m_comet->Render(m_positionAttrib, m_colorAttrib, m_tcAttrib, m_hasTexture, m_normalAttrib);
 	}
 
 	// Render Inner Asteroid Belt
 	if (m_asteroids != NULL && m_asteroidCount > 0) {
+		SendMaterialToShader(m_rockyMaterial);
+		glUniform1i(m_isSunLoc, 0);
 		glUniform1i(m_useInstancing, 1);
-		if (m_asteroids->hasTex) {
-			glUniform1i(m_hasTexture, 1);
+		glUniform1i(m_isShipLoc, 0);
+
+		glUniform1i(m_hasTexture, false);
+		glm::mat4 modelView = m_camera->GetView() * m_asteroids->GetModel();
+		glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(modelView)));
+		glUniformMatrix4fv(m_modelMatrix, 1, GL_FALSE, glm::value_ptr(m_asteroids->GetModel()));
+		GLuint hasN = m_shader->GetUniformLocation("hasNormalMap");
+		if (m_asteroids->getTextureID()) {
 			glActiveTexture(GL_TEXTURE0);
 			glBindTexture(GL_TEXTURE_2D, m_asteroids->getTextureID());
 			GLuint sampler = m_shader->GetUniformLocation("sp");
@@ -1113,19 +1582,39 @@ void Graphics::Render()
 			{
 				printf("Sampler Not found not found\n");
 			}
+			glUseProgram(m_shader->GetShaderProgram());
 			glUniform1i(sampler, 0);
+			glUniform1i(hasN, false);
+		}
+		if (m_asteroids->getNormalID()) {
+			glActiveTexture(GL_TEXTURE1);
+			glBindTexture(GL_TEXTURE_2D, m_asteroids->getNormalID());
+			GLuint normalSampler = m_shader->GetUniformLocation("sp2");
+			if (normalSampler == INVALID_UNIFORM_LOCATION) {
+				printf("Normal Sampler Not found not found\n");
+			}
+			glUseProgram(m_shader->GetShaderProgram());
+			glUniform1i(normalSampler, 1);
+			glUniform1i(hasN, true);
 		}
 		m_asteroids->Render(m_positionAttrib, m_colorAttrib, m_tcAttrib, m_hasTexture, m_normalAttrib, 100);
 		if (m_useInstancing != INVALID_UNIFORM_LOCATION) {
 			glUniform1i(m_useInstancing, 0);
 		}
 	}
-
-	// Render Outer Asteroid Belt
+		
 	if (m_outerAsteroids != NULL && m_outerAsteroidCount > 0) {
+		SendMaterialToShader(m_rockyMaterial);
+		glUniform1i(m_isSunLoc, 0);
 		glUniform1i(m_useInstancing, 1);
-		if (m_outerAsteroids->hasTex) {
-			glUniform1i(m_hasTexture, 1);
+		glUniform1i(m_isShipLoc, 0);
+
+		glUniform1i(m_hasTexture, false);
+		glm::mat4 modelView = m_camera->GetView() * m_outerAsteroids->GetModel();
+		glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(modelView)));
+		glUniformMatrix4fv(m_modelMatrix, 1, GL_FALSE, glm::value_ptr(m_outerAsteroids->GetModel()));
+		GLuint hasN = m_shader->GetUniformLocation("hasNormalMap");
+		if (m_outerAsteroids->getTextureID()) {
 			glActiveTexture(GL_TEXTURE0);
 			glBindTexture(GL_TEXTURE_2D, m_outerAsteroids->getTextureID());
 			GLuint sampler = m_shader->GetUniformLocation("sp");
@@ -1133,9 +1622,22 @@ void Graphics::Render()
 			{
 				printf("Sampler Not found not found\n");
 			}
+			glUseProgram(m_shader->GetShaderProgram());
 			glUniform1i(sampler, 0);
+			glUniform1i(hasN, false);
 		}
-		m_outerAsteroids->Render(m_positionAttrib, m_colorAttrib, m_tcAttrib, m_hasTexture,m_normalAttrib, 150);
+		if (m_outerAsteroids->getNormalID()) {
+			glActiveTexture(GL_TEXTURE1);
+			glBindTexture(GL_TEXTURE_2D, m_outerAsteroids->getNormalID());
+			GLuint normalSampler = m_shader->GetUniformLocation("sp2");
+			if (normalSampler == INVALID_UNIFORM_LOCATION) {
+				printf("Normal Sampler Not found not found\n");
+			}
+			glUseProgram(m_shader->GetShaderProgram());
+			glUniform1i(normalSampler, 1);
+			glUniform1i(hasN, true);
+		}
+		m_outerAsteroids->Render(m_positionAttrib, m_colorAttrib, m_tcAttrib, m_hasTexture, m_normalAttrib, 100);
 		if (m_useInstancing != INVALID_UNIFORM_LOCATION) {
 			glUniform1i(m_useInstancing, 0);
 		}
@@ -1147,7 +1649,7 @@ void Graphics::Render()
 	if (error != GL_NO_ERROR)
 	{
 		string val = ErrorString(error);
-		std::cout << "Error initializing OpenGL! " << error << ", " << val << std::endl;
+		//std::cout << "Error initializing OpenGL! " << error << ", " << val << std::endl;
 	}
 
 	m_useInstancing = m_shader->GetUniformLocation("useInstancing");
@@ -1192,10 +1694,10 @@ bool Graphics::collectShPrLocs() {
 		anyProblem = false;
 	}
 
-	m_colorAttrib = m_shader->GetAttribLocation("v_color");
+	m_colorAttrib = 30;
 	if (m_colorAttrib == -1)
 	{
-		printf("v_color attribute not found\n");
+		printf("color attribute not found\n");
 		anyProblem = false;
 	}
 
@@ -1230,48 +1732,69 @@ bool Graphics::collectShPrLocs() {
 		anyProblem = false;
 	}
 
-	GLuint globalAmbLoc = glGetUniformLocation(m_shader->GetShaderProgram(), "GlobalAmbient");
-	if (globalAmbLoc == INVALID_UNIFORM_LOCATION) {
-		printf("GlobalAmbient uniform not found! Check your fragment shader.\n");
+	m_isShipLoc = m_shader->GetUniformLocation("isShip");
+	if (m_isShipLoc == INVALID_UNIFORM_LOCATION) {
+		printf("isShip uniform not found! Check your fragment shader.\n");
 		anyProblem = false;
 	}
-	glProgramUniform4fv(m_shader->GetShaderProgram(), globalAmbLoc, 1, glm::value_ptr(m_light->m_globalAmbient));
+
+
+	m_shipSpeedRatioLoc = m_shader->GetUniformLocation("shipSpeedRatio");
+	if (m_shipSpeedRatioLoc == INVALID_UNIFORM_LOCATION) {
+		printf("shipSpeedRatio uniform not found! Check your fragment shader.\n");
+		anyProblem = false;
+	}
 
 	m_globalAmbLoc = m_shader->GetUniformLocation("GlobalAmbient");
-	if (m_globalAmbLoc == INVALID_UNIFORM_LOCATION) {
+	if (m_globalAmbLoc == -1) {
 		printf("GlobalAmbient uniform not found! Check your fragment shader.\n");
 		anyProblem = false;
 	}
+
 	m_lightAmbLoc = m_shader->GetUniformLocation("light.ambient");
-	if (m_lightAmbLoc == INVALID_UNIFORM_LOCATION) {
+	if (m_lightAmbLoc == -1) {
 		printf("LightAmbient uniform not found! Check your fragment shader.\n");
 		anyProblem = false;
 	}
 	m_lightDiffLoc = m_shader->GetUniformLocation("light.diffuse");
-	if (m_lightDiffLoc == INVALID_UNIFORM_LOCATION) {
+	if (m_lightDiffLoc == -1) {
 		printf("LightDiffuse uniform not found! Check your fragment shader.\n");
 		anyProblem = false;
 	}
 	m_lightSpecLoc = m_shader->GetUniformLocation("light.specular");
-	if (m_lightSpecLoc == INVALID_UNIFORM_LOCATION) {
+	if (m_lightSpecLoc == -1) {
 		printf("LightSpecular uniform not found! Check your fragment shader.\n");
 		anyProblem = false;
 	}
 	m_lightPosLoc = m_shader->GetUniformLocation("light.position");
-	if (m_lightPosLoc == INVALID_UNIFORM_LOCATION) {
+	if (m_lightPosLoc == -1) {
 		printf("LightPosition uniform not found! Check your fragment shader.\n");
 		anyProblem = false;
 	}
-
-
 	mAmbLoc = m_shader->GetUniformLocation("material.ambient");
+	if (mAmbLoc == -1) {
+		printf("MaterialAmbient uniform not found! Check your fragment shader.\n");
+		anyProblem = false;
+	}
 	mDiffLoc = m_shader->GetUniformLocation("material.diffuse");
+	if (mDiffLoc == -1) {
+		printf("MaterialDiffuse uniform not found! Check your fragment shader.\n");
+		anyProblem = false;
+	}
 	mSpecLoc = m_shader->GetUniformLocation("material.specular");
+	if (mSpecLoc == -1) {
+		printf("MaterialSpecular uniform not found! Check your fragment shader.\n");
+		anyProblem = false;
+	}
 	mShineLoc = m_shader->GetUniformLocation("material.shininess");
-
+	if (mShineLoc == -1) {
+		printf("MaterialShininess uniform not found! Check your fragment shader.\n");
+		anyProblem = false;
+	}
 
 	if (m_globalAmbLoc == INVALID_UNIFORM_LOCATION || m_lightPosLoc == INVALID_UNIFORM_LOCATION) {
 		printf("Warning: Some lighting uniforms optimized out or missing.\n");
+		anyProblem = false;
 	}
 	return anyProblem;
 }

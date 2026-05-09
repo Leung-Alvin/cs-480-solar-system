@@ -22,6 +22,27 @@ Asteroid::Asteroid(const char* fname) {
         hasTex = false;
 }
 
+Asteroid::Asteroid(const char* fname, const char* nname) {
+
+    setupVertices();
+    setupBuffers();
+    setupModelMatrix(glm::vec3(0., 0., 0.), 0., 1.);
+
+    // load texture from file
+    m_texture = new Texture(fname);
+    if (m_texture && m_texture->getTextureID() != 0)
+        hasTex = true;
+    else
+        hasTex = false;
+
+	m_norm = new Norm(nname);
+    if (m_norm && m_norm->getNormalID() != 0)
+        hasNorm = true;
+    else
+		hasNorm = false;
+}
+
+
 void Asteroid::setupVertices() {
     numVertices = 14;
     numIndices = 24;
@@ -131,9 +152,9 @@ void Asteroid::Update(const std::vector<glm::mat4>& modelMatrices) {
     // Set up matrix attributes (mat4 takes 4 attribute slots)
     GLsizei vec4Size = sizeof(glm::vec4);
     for (int i = 0; i < 4; i++) {
-        glEnableVertexAttribArray(3 + i);
-        glVertexAttribPointer(3 + i, 4, GL_FLOAT, GL_FALSE, sizeof(glm::mat4), (void*)(i * vec4Size));
-        glVertexAttribDivisor(3 + i, 1); // Tell OpenGL this is an instanced attribute
+        glEnableVertexAttribArray(12 + i);
+        glVertexAttribPointer(12 + i, 4, GL_FLOAT, GL_FALSE, sizeof(glm::mat4), (void*)(i * vec4Size));
+        glVertexAttribDivisor(12 + i, 1); // Tell OpenGL this is an instanced attribute
     }
     
     glBindVertexArray(0);
@@ -163,39 +184,51 @@ void Asteroid::Render(GLint positionAttribLoc, GLint colorAttribLoc, GLint, int 
 }
 
 void Asteroid::Render(GLint posAttribLoc, GLint colAttribLoc, GLint tcAttribLoc, GLint hasTextureLoc, GLint normalAttribLoc, int instanceCount) {
-    glBindVertexArray(vao);
     
+    glBindVertexArray(vao);
     // Enable vertex attribute arrays for each vertex attrib
     glEnableVertexAttribArray(posAttribLoc);
-    glEnableVertexAttribArray(colAttribLoc);
+    //glEnableVertexAttribArray(colAttribLoc);
     glEnableVertexAttribArray(tcAttribLoc);
+	glEnableVertexAttribArray(normalAttribLoc);
 
     // Bind your VBO
     glBindBuffer(GL_ARRAY_BUFFER, VB);
 
     // Set vertex attribute pointers to load correct data
     glVertexAttribPointer(posAttribLoc, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), 0);
-    glVertexAttribPointer(colAttribLoc, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal));
+    //glVertexAttribPointer(colAttribLoc, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal));
     glVertexAttribPointer(tcAttribLoc, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, texcoord));
+	glVertexAttribPointer(normalAttribLoc, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal));
 
     // Bind your Element Array
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IB);
 
     // Handle texture binding
-    if (m_texture != NULL) {
-        glUniform1i(hasTextureLoc, true);
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, m_texture->getTextureID());
-    }
-    else {
-        glUniform1i(hasTextureLoc, false);
-    }
+ //   if (m_texture != NULL) {
+ //       glUniform1i(hasTextureLoc, true);
+ //       glActiveTexture(GL_TEXTURE0);
+ //       glBindTexture(GL_TEXTURE_2D, m_texture->getTextureID());
+ //   }
+ //   else {
+ //       glUniform1i(hasTextureLoc, false);
+ //   }
+
+ //   if (m_norm != NULL) {
+ //       glUniform1i(normalAttribLoc, true);
+ //       glActiveTexture(GL_TEXTURE1);
+ //       glBindTexture(GL_TEXTURE_2D, m_norm->getNormalID());
+ //   }
+ //   else {
+ //       glUniform1i(normalAttribLoc, false);
+	//}
 
     // Render with instancing
     glDrawElementsInstanced(GL_TRIANGLES, static_cast<GLsizei>(Indices.size()), GL_UNSIGNED_INT, 0, instanceCount);
 
     // Disable vertex arrays
     glDisableVertexAttribArray(posAttribLoc);
-    glDisableVertexAttribArray(colAttribLoc);
+    //glDisableVertexAttribArray(colAttribLoc);
     glDisableVertexAttribArray(tcAttribLoc);
+    glDisableVertexAttribArray(normalAttribLoc);
 }

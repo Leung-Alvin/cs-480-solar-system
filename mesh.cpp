@@ -136,6 +136,7 @@ void Mesh::Render(GLint posAttribLoc, GLint colAttribLoc)
 
 void Mesh::Render(GLint posAttribLoc, GLint colAttribLoc, GLint tcAttribLoc, GLint hasTextureLoc, GLint normalAttribLoc)
 {
+	//std::cout << "position loc: " << posAttribLoc << " color loc: " << colAttribLoc << " tc loc: " << tcAttribLoc << " has texture loc: " << hasTextureLoc << " normal loc: " << normalAttribLoc << std::endl;
 	glBindVertexArray(vao);
 	// Enable vertex attibute arrays for each vertex attrib
 	glEnableVertexAttribArray(posAttribLoc);
@@ -156,14 +157,14 @@ void Mesh::Render(GLint posAttribLoc, GLint colAttribLoc, GLint tcAttribLoc, GLi
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IB);
 
 	// If has texture, set up texture unit(s) and bind texture
-	if (m_texture != NULL) {
-		glUniform1i(hasTextureLoc, true);
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, m_texture->getTextureID());
-	}
-	else {
-		glUniform1i(hasTextureLoc, false);
-	}
+	//if (m_texture != NULL) {
+	//	glUniform1i(hasTextureLoc, true);
+	//	glActiveTexture(GL_TEXTURE0);
+	//	glBindTexture(GL_TEXTURE_2D, m_texture->getTextureID());
+	//}
+	//else {
+	//	glUniform1i(hasTextureLoc, false);
+	//}
 
 	//if (m_norm != NULL) {
 	//	std::cout << "has normal map" << std::endl;
@@ -181,7 +182,7 @@ void Mesh::Render(GLint posAttribLoc, GLint colAttribLoc, GLint tcAttribLoc, GLi
 
 	// Disable vertex arrays
 	glDisableVertexAttribArray(posAttribLoc);
-	glDisableVertexAttribArray(colAttribLoc);
+	//glDisableVertexAttribArray(colAttribLoc);
 	glDisableVertexAttribArray(tcAttribLoc);
 	glDisableVertexAttribArray(normalAttribLoc);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -211,7 +212,7 @@ bool Mesh::loadModelFromFile(const char* path) {
 	const aiScene* scene = importer.ReadFile(path, aiProcess_Triangulate);
 
 	if (!scene) {
-		printf("couldn't open the .obj file. \n");
+		//printf("couldn't open the .obj file. \n");
 		std::cout << path << std::endl;
 		return false;
 	}

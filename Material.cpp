@@ -1,12 +1,10 @@
 #include "Material.h"
 
-Material::Material(float matAmb[4], float matDiff[4], float matSpec[4], float matShine)
+Material::Material(glm::vec4 matAmb, glm::vec4 matDiff, glm::vec4 matSpec, glm::vec1 matShine)
 {
-	for (int i = 0; i < 4; i++) {
-		matAmbient[i] = matAmb[i];
-		matDiffuse[i] = matDiff[i];
-		matSpecular[i] = matSpec[i];
-	}
+	matAmbient = matAmb;
+	matDiffuse = matDiff;
+	matSpecular = matSpec;
 	matShininess = matShine;
 }
 

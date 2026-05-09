@@ -3,6 +3,7 @@
 #include "Texture.h"
 #include <vector>
 #include "graphics_headers.h"
+#include "Norm.h"
 class Asteroid : public Object
 {
 public:
@@ -21,6 +22,7 @@ public:
     void Update(glm::mat4 matModel);
 
     Asteroid(const char* fname);
+	Asteroid(const char* fname, const char* nname);
 
     std::vector<int> getIndices();
     std::vector<glm::vec3> getVertices();
@@ -28,8 +30,10 @@ public:
     std::vector<glm::vec3> getNormals();
 
     GLuint getTextureID() { return m_texture->getTextureID(); }
+    GLuint getNormalID() { return m_norm->getNormalID(); }
 
     bool hasTex;
+    bool hasNorm;
 
 private:
     glm::vec3 pivotLocation;
@@ -38,7 +42,9 @@ private:
     std::vector<unsigned int> Indices;
     GLuint VB;
     GLuint IB;
+
     Texture* m_texture;
+    Norm* m_norm;
 
     GLuint vao;
     

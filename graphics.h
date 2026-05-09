@@ -40,8 +40,12 @@ class Graphics
 	glm::vec3 getPlanetPosition(PlanetID id);
 	PlanetID findClosestPlanetID();
 	float getPlanetRadius(PlanetID planet);
+
+    void SendMaterialToShader(Material* mat);
     
     bool m_showShip = true;
+
+    float m_shipSpeedRatio = 0.0f;
 
 
 
@@ -111,6 +115,11 @@ class Graphics
 	Light* m_light;
 
 	Material* m_material;
+	Material* m_rockyMaterial;
+	Material* m_gasMaterial;
+	Material* m_sunMaterial;
+	Material* m_dwarfMaterial;
+    Material* m_shipMaterial;
 
     GLint m_globalAmbLoc;
     GLint m_lightAmbLoc;
@@ -125,6 +134,9 @@ class Graphics
 	GLint mShineLoc;
 
     glm::vec3 m_nearestPlanetPos;
+
+	GLint m_isShipLoc;
+    GLint m_shipSpeedRatioLoc;
 
 };
 

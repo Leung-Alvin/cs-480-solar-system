@@ -6,14 +6,14 @@
 class Material
 {
   public:
-	Material(float matAmb[4], float matDiff[4], float matSpec[4], float matShine);
+	Material(glm::vec4 matAmb, glm::vec4 matDiff, glm::vec4 matSpec, glm::vec1 matShine);
     ~Material();
 
 
-	float matAmbient[4];
-	float matDiffuse[4];
-	float matSpecular[4];
-	float matShininess;
+	glm::vec4 matAmbient;
+	glm::vec4 matDiffuse;
+	glm::vec4 matSpecular;
+	glm::vec1 matShininess;
 
 
   

@@ -81,59 +81,7 @@ void Engine::Run()
 
 void Engine::ProcessInput()
 {
-    float shipHullSize = 40.0f;
-    //if (scrollOffsetY != 0.0) {
-    //    float zoomSpeed = 10.0f;
-
-    //    if (isThird) {
-    //        tpZoom -= (float)scrollOffsetY * zoomSpeed;
-    //        tpZoom = glm::clamp(tpZoom, 50.0f, 100.0f); // Keep TP zoom reasonable
-    //    }
-    //    else {
-    //        fpZoom += (float)scrollOffsetY * zoomSpeed; // '+' moves it further out the nose
-    //        fpZoom = glm::clamp(fpZoom, 0.0f, 500.0f);   // Keep FP zoom past the cockpit
-    //    }
-    //    scrollOffsetY = 0.0;
-    //}
-
-    //if (scrollOffsetY != 0.0) {
-    //    float zoomSpeed = 20.0f; // Adjust for sensitivity
-
-    //    if (isThird) {
-    //        tpZoom -= (float)scrollOffsetY * zoomSpeed;
-    //        tpZoom = glm::clamp(tpZoom, 10.0f, 500.0f);
-    //    }
-    //    else {
-    //        fpZoom += (float)scrollOffsetY * zoomSpeed;
-    //        fpZoom = glm::clamp(fpZoom, 10.0f, 500.0f);
-    //    }
-    //    scrollOffsetY = 0.0;
-    //}
-
-
-    //if (scrollOffsetY != 0.0) {
-    //    float zoomSpeed = 20.0f;
-
-    //    if (isThird) {
-    //        tpZoom -= (float)scrollOffsetY * zoomSpeed;
-    //        tpZoom = glm::clamp(tpZoom, 10.0f, 1000.0f);
-    //    }
-    //    else {
-    //        // --- RELATIVE ZOOM LOGIC ---
-    //        float minZoom = 2.0f; // Minimum distance from ship center
-    //        float maxZoom = 500.0f; // Default for when not locked
-
-    //        if (isSnapping && lockedTarget != NONE) {
-    //            float targetRadius = m_graphics->getPlanetRadius(lockedTarget);
-    //            maxZoom = targetRadius * 2.5f;
-    //            zoomSpeed = targetRadius * 0.1f; 
-    //        }
-
-    //        fpZoom += (float)scrollOffsetY * zoomSpeed;
-    //        fpZoom = glm::clamp(fpZoom, minZoom, maxZoom);
-    //    }
-    //    scrollOffsetY = 0.0;
-    //}
+    float shipHullSize = 20.0f;
 
     if (scrollOffsetY != 0.0) {
         // Instead of adding a flat 20.0f, change by 10% per scroll
@@ -144,7 +92,7 @@ void Engine::ProcessInput()
         }
         else {
             // Invert for FP because + moves further away
-            fpZoom += scrollOffsetY;
+            fpZoom *= multiplier;
         }
         scrollOffsetY = 0.0;
     }
@@ -179,6 +127,8 @@ void Engine::ProcessInput()
             moveSpeed = 0.0f;
         }
     }
+
+	m_graphics->m_shipSpeedRatio = std::min(std::abs(moveSpeed) / maxSpeed, 1.0f);
 
     shipModel = glm::translate(shipModel, glm::vec3(0.0f, 0.0f, moveSpeed));
 
@@ -265,22 +215,15 @@ void Engine::ProcessInput()
     glm::vec3 shipForward = glm::vec3(shipModel[2]); 
     glm::vec3 shipUp = glm::vec3(shipModel[1]);
 
-    //if (isThird) {
-    //    float minTP = std::max(shipHullSize * 2.0f, targetRadius * 0.5f);
-    //    float maxTP = std::max(minTP + 100.0f, targetRadius * 10.0f);
-    //    tpZoom = glm::clamp(tpZoom, minTP, maxTP);
 
-    //    float heightOffset = glm::clamp(targetRadius * 0.5f, shipHullSize * 1.5f, 60.0f);
-
-    //    finalCameraPos = glm::vec3(shipModel * glm::vec4(0.0f, heightOffset, -tpZoom, 1.0f));
-    //    finalLookAt = shipPos + (shipForward * (targetRadius * 5.0f));
-    //}
     if (isThird) {
         const float SHIP_MIN_DISTANCE = 40.0f;
 
         float minTP = SHIP_MIN_DISTANCE;
         float maxTP = 1500.0f;
         tpZoom = glm::clamp(tpZoom, minTP, maxTP);
+
+        //cout << "minTP: " << minTP << ", maxTP: " << maxTP << ", tpZoom: " << tpZoom << endl;
 
 
         float zoomPercent = (tpZoom - minTP) / (maxTP - minTP);
@@ -296,14 +239,26 @@ void Engine::ProcessInput()
 
         float cockpitHeight = shipHullSize * 0.5f;
 
-        float minFP = shipHullSize;
-        float maxFP = std::max(minFP + 10.0f, targetRadius * 2.0f);
+        float minFP = 0.00001f;
+        //float maxFP = std::max(minFP + 10.0f, targetRadius * 2.0f);
+		float maxFP = 100.0f;
+		cout << "minFP: " << minFP << ", maxFP: " << maxFP << ", fpZoom: " << fpZoom << endl;
         fpZoom = glm::clamp(fpZoom, minFP, maxFP);
 
         finalCameraPos = glm::vec3(shipModel * glm::vec4(0.0f, cockpitHeight, fpZoom, 1.0f));
 
         if (isSnapping && lockedTarget != NONE) {
-            finalLookAt = m_graphics->getPlanetPosition(lockedTarget);
+            glm::vec3 targetPos = m_graphics->getPlanetPosition(lockedTarget);
+			glm::vec3 cameraPos = shipPos + (shipUp * cockpitHeight) + shipForward;
+			glm::vec3 viewDir = glm::normalize(cameraPos - targetPos);
+			
+			glm::vec3 zoomedPos = targetPos + (viewDir * fpZoom);
+
+			//cout << "zoomedPos: " << zoomedPos.x << ", " << zoomedPos.y << ", " << zoomedPos.z << endl;
+
+			//Apply Zoom with linear interpolation towards the target position
+            finalLookAt = targetPos;
+			finalCameraPos = glm::mix(finalCameraPos, zoomedPos, 0.1f);
         }
         else {
             finalLookAt = finalCameraPos + (shipForward * 1000.0f);

@@ -67,30 +67,60 @@ bool Shader::AddShader(GLenum ShaderType)
       s = R"(
         #version 460
         layout (location = 0) in vec3 v_position;
-        layout (location = 1) in vec3 v_color;
+        layout (location = 1) in vec3 v_normal;
         layout (location = 2) in vec2 v_tc;
-        layout (location = 3) in vec3 v_normal;
+
+        layout(location = 12) in vec4 instanceMatrix_col0;
+        layout(location = 13) in vec4 instanceMatrix_col1;
+        layout(location = 14) in vec4 instanceMatrix_col2;
+        layout(location = 15) in vec4 instanceMatrix_col3;
 
         out vec3 color;
         out vec2 tc;
         out vec3 normal;
-        out vec3 fragWorldPos; 
+        out vec3 fragWorldPos;
+        out vec3 localPos;
 
         uniform mat4 projectionMatrix;
         uniform mat4 viewMatrix;
         uniform mat4 modelMatrix;
+        uniform int useInstancing;
+
+        //struct PositionalLight {
+        //    vec4 position;
+        //    vec4 ambient;
+        //    vec4 diffuse;
+        //    vec4 specular;
+        //};
+
+        //uniform vec4 GlobalAmbient;
+        //uniform PositionalLight light;
+
+        uniform sampler2D sp;
 
         void main(void)
         {
+          localPos = v_position;
           vec4 worldPos = modelMatrix * vec4(v_position, 1.0);
           fragWorldPos = worldPos.xyz; 
           
-          gl_Position = (projectionMatrix * viewMatrix) * worldPos;
+          //gl_Position = (projectionMatrix * viewMatrix) * worldPos;
           
-          color = v_color;
+          color = texture(sp, v_tc).rgb;
           tc = v_tc;
-          normal = mat3(transpose(inverse(modelMatrix))) * v_normal;
+
+          mat4 finalModel = modelMatrix;
+          if (useInstancing == 1) {
+              finalModel = mat4(instanceMatrix_col0, instanceMatrix_col1, instanceMatrix_col2, instanceMatrix_col3) * modelMatrix;
+          }
+          else {
+              finalModel = modelMatrix;
+          }
+          
+          normal = mat3(transpose(inverse(finalModel))) * v_normal;
+          gl_Position = (projectionMatrix * viewMatrix) * finalModel * vec4(v_position, 1.0);
         }
+
       )";
   }
   else if (ShaderType == GL_FRAGMENT_SHADER)
@@ -98,28 +128,93 @@ bool Shader::AddShader(GLenum ShaderType)
       s = R"(
         #version 460
         uniform sampler2D sp;
-        uniform bool hasTexture;
+        uniform sampler2D sp2;
+        uniform bool hasNormalMap;
         uniform bool isSun;
+
+        struct PositionalLight {
+            vec4 position;
+            vec4 ambient;
+            vec4 diffuse;
+            vec4 specular;
+        };
+
         uniform vec4 GlobalAmbient;
+        uniform PositionalLight light;
+
+        struct Material {
+            vec4 ambient;
+            vec4 diffuse;
+            vec4 specular;
+            float shininess;
+        };
+
+        uniform Material material;
+        uniform vec3 viewPos;
         
         in vec3 color;
         in vec2 tc;
         in vec3 normal;
-        in vec3 fragWorldPos; 
+        in vec3 fragWorldPos;
+        in vec3 localPos;
+
+        uniform bool isShip;
+        uniform float shipSpeedRatio;
 
         out vec4 frag_color;
 
         void main(void)
         {
-            vec4 baseColor = hasTexture ? texture(sp, tc) : vec4(color, 1.0);
+            vec4 baseColor = vec4(color, 1.0);
 
             if (isSun) {
                 frag_color = baseColor; 
             } else {
-                vec3 lightPos = vec3(0.0, 0.0, 0.0);
-                vec3 lightDir = normalize(lightPos - fragWorldPos);
-                float diff = max(dot(normalize(normal), lightDir), 0.0);
-                frag_color = baseColor * (GlobalAmbient + diff);
+                vec3 norm = normalize(normal);
+
+                if (hasNormalMap) {
+                    vec3 normalMap = texture(sp2, tc).rgb;
+                    normalMap = normalize(normalMap * 2.0 - 1.0);
+
+                    vec3 Q1 = dFdx(fragWorldPos);
+                    vec3 Q2 = dFdy(fragWorldPos);
+                    vec2 st1 = dFdx(tc);
+                    vec2 st2 = dFdy(tc);
+                    vec3 N = normalize(normal);
+                    vec3 T = normalize(Q1 * st2.t - Q2 * st1.t);
+                    vec3 B = -normalize(cross(N, T));
+                    mat3 TBN = mat3(T, B, N);
+                    norm = normalize(TBN * normalMap);
+                }
+                                
+
+                vec3 lightDir = normalize(light.position.xyz - fragWorldPos);
+                vec3 viewDir = normalize(viewPos - fragWorldPos);
+
+                vec4 ambient = (GlobalAmbient + light.ambient) * material.ambient;
+                float diff = max(dot(norm, lightDir), 0.0);
+                vec4 diffuse = light.diffuse * (diff * material.diffuse);
+
+                vec3 reflectDir = reflect(-lightDir, norm);
+                float spec = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess);
+                vec4 specular = light.specular * (spec * material.specular);
+
+                vec3 emission = vec3(0.0);
+                if (isShip) {
+                    float engineMask = smoothstep(-0.2, -0.5, localPos.z);
+
+                    
+                    vec3 idleColor = vec3(0.8, 0.2, 0.0);
+                    vec3 fastColor = vec3(0.2,0.8,1.0);
+                    vec3 glowColor = mix(idleColor, fastColor, shipSpeedRatio);
+
+                    emission = glowColor * (0.2 + shipSpeedRatio * 2.0) * engineMask;
+                    //emission = vec3(0.0, 1.0, 1.0) * shipSpeedRatio;
+                }
+
+                //vec4 finalResult = (ambient + diffuse) * baseColor + specular;
+                vec4 finalResult = (ambient + diffuse) * baseColor + specular + vec4(emission, 0.0);
+                frag_color = vec4(finalResult.rgb, 1.0);
             }
         }
       )";
@@ -226,3 +321,80 @@ GLint Shader::GetAttribLocation(const char* pAttribName)
 
     return Location;
 }
+
+//s = R"(
+//        #version 460
+//        uniform sampler2D sp;
+//        uniform sampler2D sp2;
+//        uniform bool hasNormalMap;
+//        uniform bool isSun;
+//
+//        struct PositionalLight {
+//            vec4 position;
+//            vec4 ambient;
+//            vec4 diffuse;
+//            vec4 specular;
+//        };
+//
+//        uniform vec4 GlobalAmbient;
+//        uniform PositionalLight light;
+//
+//        struct Material {
+//            vec4 ambient;
+//            vec4 diffuse;
+//            vec4 specular;
+//            float shininess;
+//        };
+//
+//        uniform Material material;
+//        uniform vec3 viewPos;
+//        
+//        in vec3 color;
+//        in vec2 tc;
+//        in vec3 normal;
+//        in vec3 fragWorldPos;
+//        in vec3 localPos;
+//
+//        uniform bool isShip;
+//        uniform float shipSpeedRatio;
+//
+//        out vec4 frag_color;
+//
+//        void main(void)
+//        {
+//            vec4 baseColor = vec4(color, 1.0);
+//
+//            if (isSun) {
+//                frag_color = baseColor; 
+//            } else {
+//                vec3 norm = normalize(normal);
+//                vec3 lightDir = normalize(light.position.xyz - fragWorldPos);
+//                vec3 viewDir = normalize(viewPos - fragWorldPos);
+//
+//                vec4 ambient = (GlobalAmbient + light.ambient) * material.ambient;
+//                float diff = max(dot(norm, lightDir), 0.0);
+//                vec4 diffuse = light.diffuse * (diff * material.diffuse);
+//
+//                vec3 reflectDir = reflect(-lightDir, norm);
+//                float spec = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess);
+//                vec4 specular = light.specular * (spec * material.specular);
+//
+//                vec3 emission = vec3(0.0);
+//                if (isShip) {
+//                    float engineMask = smoothstep(-0.2, -0.5, localPos.z);
+//
+//                    
+//                    vec3 idleColor = vec3(0.8, 0.2, 0.0);
+//                    vec3 fastColor = vec3(0.2,0.8,1.0);
+//                    vec3 glowColor = mix(idleColor, fastColor, shipSpeedRatio);
+//
+//                    emission = glowColor * (0.2 + shipSpeedRatio * 2.0) * engineMask;
+//                    //emission = vec3(0.0, 1.0, 1.0) * shipSpeedRatio;
+//                }
+//
+//                //vec4 finalResult = (ambient + diffuse) * baseColor + specular;
+//                vec4 finalResult = (ambient + diffuse) * baseColor + specular + vec4(emission, 0.0);
+//                frag_color = vec4(finalResult.rgb, 1.0);
+//            }
+//        }
+//      )";
