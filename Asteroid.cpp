@@ -139,7 +139,7 @@ void Asteroid::Update(const std::vector<glm::mat4>& modelMatrices) {
     glBindVertexArray(0);
 }
 
-void Asteroid::Render(GLint positionAttribLoc, GLint colorAttribLoc, int instanceCount) {
+void Asteroid::Render(GLint positionAttribLoc, GLint colorAttribLoc, GLint, int instanceCount) {
     glBindVertexArray(vao);
     // Enable Vertext Attributes
     glEnableVertexAttribArray(positionAttribLoc);
@@ -162,7 +162,7 @@ void Asteroid::Render(GLint positionAttribLoc, GLint colorAttribLoc, int instanc
     glDisableVertexAttribArray(colorAttribLoc);
 }
 
-void Asteroid::Render(GLint posAttribLoc, GLint colAttribLoc, GLint tcAttribLoc, GLint hasTextureLoc, int instanceCount) {
+void Asteroid::Render(GLint posAttribLoc, GLint colAttribLoc, GLint tcAttribLoc, GLint hasTextureLoc, GLint normalAttribLoc, int instanceCount) {
     glBindVertexArray(vao);
     
     // Enable vertex attribute arrays for each vertex attrib

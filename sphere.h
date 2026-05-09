@@ -1,5 +1,6 @@
 #include "object.h"
 #include "Texture.h"
+#include "Norm.h"
 
 class Sphere :
     public Object
@@ -9,13 +10,14 @@ public:
 
 
     void Render(GLint positionAttribLoc, GLint colorAttribLoc);
-    void Render(GLint positionAttribLoc, GLint colorAttribLoc, GLint tcAttribLoc, GLint hasTex);
+    void Render(GLint positionAttribLoc, GLint colorAttribLoc, GLint tcAttribLoc, GLint hasTex, GLint normalAttribLoc);
 
     glm::mat4 GetModel() { return model; }
     void Update(glm::mat4 matModel);
 
     Sphere(int prec);
     Sphere(int prec, const char* fname);
+    Sphere(int prec, const char* fname, const char* nname);
 
     int getNumVertices();
     int getNumIndices();
@@ -25,8 +27,10 @@ public:
     std::vector<glm::vec3> getNormals();
 
     GLuint getTextureID() { return m_texture->getTextureID(); }
+	GLuint getNormalID() { return m_norm->getNormalID(); }
     
     bool hasTex;
+	bool hasNorm;
 
 private:
     glm::vec3 pivotLocation;
@@ -35,7 +39,9 @@ private:
     std::vector<unsigned int> Indices;
     GLuint VB;
     GLuint IB;
+
     Texture* m_texture;
+	Norm* m_norm;
 
 
     GLuint vao;

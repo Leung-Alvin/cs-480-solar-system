@@ -10,7 +10,7 @@ public:
 
 
     void Render(GLint positionAttribLoc, GLint colorAttribLoc, int instanceCount);
-    void Render(GLint positionAttribLoc, GLint colorAttribLoc, GLint tcAttribLoc, GLint hasTex, int instanceCount);
+    void Render(GLint positionAttribLoc, GLint colorAttribLoc, GLint tcAttribLoc, GLint hasTex, GLint normalAttribLoc, int instanceCount);
 
     void Render(GLint positionAttribLoc, GLint colorAttribLoc);
     void Render(GLint positionAttribLoc, GLint colorAttribLoc, GLint tcAttribLoc, GLint hasTex);

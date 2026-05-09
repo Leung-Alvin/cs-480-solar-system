@@ -60,6 +60,35 @@ Mesh::Mesh(glm::vec3 pivot, const char* fname, const char* tname)
 		hasTex = false;
 }
 
+Mesh::Mesh(glm::vec3 pivot, const char* fname, const char* tname, const char* nname)
+{
+	// Vertex Set Up
+	loadModelFromFile(fname);
+
+	// Model Set Up
+	angle = 0.0f;
+	pivotLocation = pivot;
+	model = glm::translate(glm::mat4(1.0f), pivotLocation);
+
+	// Buffer Set Up
+	if (!InitBuffers()) {
+		printf("some buffers not initialized.\n");
+	}
+
+	// load texture from file
+	m_texture = new Texture(tname);
+	if (m_texture && m_texture->getTextureID() != 0)
+		hasTex = true;
+	else
+		hasTex = false;
+
+	m_norm = new Norm(nname);
+	if (m_norm && m_norm->getNormalID() != 0)
+		hasNorm = true;
+	else
+		hasNorm = false;
+}
+
 
 Mesh::~Mesh()
 {
@@ -105,21 +134,23 @@ void Mesh::Render(GLint posAttribLoc, GLint colAttribLoc)
 	glDisableVertexAttribArray(colAttribLoc);
 }
 
-void Mesh::Render(GLint posAttribLoc, GLint colAttribLoc, GLint tcAttribLoc, GLint hasTextureLoc)
+void Mesh::Render(GLint posAttribLoc, GLint colAttribLoc, GLint tcAttribLoc, GLint hasTextureLoc, GLint normalAttribLoc)
 {
 	glBindVertexArray(vao);
 	// Enable vertex attibute arrays for each vertex attrib
 	glEnableVertexAttribArray(posAttribLoc);
-	glEnableVertexAttribArray(colAttribLoc);
+	//glEnableVertexAttribArray(colAttribLoc);
 	glEnableVertexAttribArray(tcAttribLoc);
+	glEnableVertexAttribArray(normalAttribLoc); // NEW: Enable normals
 
 	// Bind your VBO
 	glBindBuffer(GL_ARRAY_BUFFER, VB);
 
 	// Set vertex attribute pointers to the load correct data
 	glVertexAttribPointer(posAttribLoc, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), 0);
-	glVertexAttribPointer(colAttribLoc, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal));
+	//glVertexAttribPointer(colAttribLoc, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal));
 	glVertexAttribPointer(tcAttribLoc, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, texcoord));
+	glVertexAttribPointer(normalAttribLoc, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal));
 
 	// Bind your Element Array
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IB);
@@ -134,6 +165,17 @@ void Mesh::Render(GLint posAttribLoc, GLint colAttribLoc, GLint tcAttribLoc, GLi
 		glUniform1i(hasTextureLoc, false);
 	}
 
+	//if (m_norm != NULL) {
+	//	std::cout << "has normal map" << std::endl;
+	//	glUniform1i(normalAttribLoc, true);
+	//	glActiveTexture(GL_TEXTURE1);
+	//	glBindTexture(GL_TEXTURE_2D, m_norm->getNormalID());
+	//}
+	//else {
+	//	std::cout << "no normal map" << std::endl;
+	//	glUniform1i(normalAttribLoc, false);
+	//}
+
 	// Render
 	glDrawElements(GL_TRIANGLES, Indices.size(), GL_UNSIGNED_INT, 0);
 
@@ -141,6 +183,7 @@ void Mesh::Render(GLint posAttribLoc, GLint colAttribLoc, GLint tcAttribLoc, GLi
 	glDisableVertexAttribArray(posAttribLoc);
 	glDisableVertexAttribArray(colAttribLoc);
 	glDisableVertexAttribArray(tcAttribLoc);
+	glDisableVertexAttribArray(normalAttribLoc);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
@@ -169,6 +212,7 @@ bool Mesh::loadModelFromFile(const char* path) {
 
 	if (!scene) {
 		printf("couldn't open the .obj file. \n");
+		std::cout << path << std::endl;
 		return false;
 	}
 

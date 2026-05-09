@@ -12,12 +12,18 @@ using namespace std;
 #include "object.h"
 #include "sphere.h"
 #include "mesh.h"
+#include "Light.h"
 #include "Asteroid.h"
+#include "Material.h"
 
 #define numVBOs 2;
 #define numIBs 2;
 
-
+enum PlanetID {
+    SUN, MERCURY, VENUS, EARTH, MOON, MARS, JUPITER, JUPITER_MOON1, JUPITER_MOON2, SATURN,
+    SATURN_MOON1, SATURN_MOON2, COMET, URANUS, NEPTUNE,
+    CERES, ERIS, HAUMEA, NONE
+};
 class Graphics
 {
   public:
@@ -26,8 +32,21 @@ class Graphics
     bool Initialize(int width, int height);
     void HierarchicalUpdate2(double dt);
     void Render();
-
+    void Update(glm::mat4 transform);
+    void UpdateCamera(float x, float y, bool l, bool r, bool u, bool d);
     Camera* getCamera() { return m_camera; }
+	Mesh* getMesh() { return m_mesh; }
+	glm::vec3 getNearestPlanetPos() { return m_nearestPlanetPos; }
+	glm::vec3 getPlanetPosition(PlanetID id);
+	PlanetID findClosestPlanetID();
+	float getPlanetRadius(PlanetID planet);
+    
+    bool m_showShip = true;
+
+
+
+
+
 
   private:
     std::string ErrorString(GLenum error);
@@ -45,11 +64,14 @@ class Graphics
     GLint m_projectionMatrix;
     GLint m_viewMatrix;
     GLint m_modelMatrix;
+	GLint m_normalMatrix;
     GLint m_positionAttrib;
     GLint m_colorAttrib;
     GLint m_tcAttrib;
     GLint m_hasTexture;
+    GLint m_normalAttrib;
     GLint m_useInstancing;
+    GLint m_hasNorm;
 
     Sphere* m_sun;
     Sphere* m_mercury;
@@ -72,19 +94,38 @@ class Graphics
 
     Mesh* m_mesh;
     Mesh* m_skybox;
-    
-	int randomizers[150];
+
+    int randomizers[150];
     float spacingScale = 3.0f;
 
     // Inner asteroid belt
     Asteroid* m_asteroids;
     std::vector<glm::mat4> m_asteroidTransforms;
     int m_asteroidCount;
-    
+
     // Outer asteroid belt
     Asteroid* m_outerAsteroids;
     std::vector<glm::mat4> m_outerAsteroidTransforms;
     int m_outerAsteroidCount;
+
+	Light* m_light;
+
+	Material* m_material;
+
+    GLint m_globalAmbLoc;
+    GLint m_lightAmbLoc;
+    GLint m_lightDiffLoc;
+    GLint m_lightSpecLoc;
+    GLint m_lightPosLoc;
+	GLint m_isSunLoc;
+
+    GLint mAmbLoc;
+	GLint mDiffLoc;
+	GLint mSpecLoc;
+	GLint mShineLoc;
+
+    glm::vec3 m_nearestPlanetPos;
+
 };
 
 #endif /* GRAPHICS_H */
