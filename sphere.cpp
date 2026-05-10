@@ -7,7 +7,7 @@ Sphere::Sphere()
     setupBuffers();
     setupModelMatrix(glm::vec3(0., 0., 0.), 0., 1.);
     m_texture = nullptr;
-    hasTex = false;  // ADD THIS LINE
+    hasTex = false; 
 }
 
 Sphere::Sphere(int prec) { // prec is precision, or number of slices
