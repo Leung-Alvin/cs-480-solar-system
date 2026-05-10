@@ -271,9 +271,8 @@ bool Graphics::Initialize(int width, int height)
 	m_comet = new Sphere(40, "assets\\2k_moon.jpg", "assets\\2k_moon-n.jpg");
 
 	// Skybox - use a large cube with a space texture
-	m_skybox = new Mesh(glm::vec3(0.0f, 0.0f, 0.0f), "assets\\Galaxy-cubemap2.png");
-	
-	// Asteroid belts
+	m_skybox = new Mesh(glm::vec3(0.0f, 0.0f, 0.0f), "assets\\cube.obj", "assets\\Galaxy-cubemap2.png");
+
 	m_asteroidCount = 50;
 	m_asteroids = new Asteroid("assets\\2k_moon.jpg", "assets\\2k_moon-n.jpg");
 
@@ -299,7 +298,7 @@ void Graphics::HierarchicalUpdate2(double dt) {
   }
   
   if (m_skybox != NULL) {
-    glm::mat4 skyboxTransform = glm::scale(glm::mat4(1.0f), glm::vec3(200.0f, 200.0f, 200.0f));
+    glm::mat4 skyboxTransform = glm::scale(glm::vec3(300.0f, 300.0f, 300.0f));
     m_skybox->Update(skyboxTransform);
   }
   
@@ -764,20 +763,46 @@ void Graphics::Render()
 
 	// Render Skybox first with depth writing disabled
 	if (m_skybox != NULL) {
-		glDepthMask(GL_FALSE); // Disable depth writing for 
-		glUniformMatrix4fv(m_modelMatrix, 1, GL_FALSE, glm::value_ptr(m_skybox->GetModel()));
-		if (m_skybox->hasTex) {
-			glUniform1i(m_hasTexture, 1);
-			glActiveTexture(GL_TEXTURE0);
-			glBindTexture(GL_TEXTURE_2D, m_skybox->getTextureID());
-			GLuint sampler = m_shader->GetUniformLocation("sp");
-			if (sampler == INVALID_UNIFORM_LOCATION) {
-				printf("Sampler Not found\n");
-			}
-			glUniform1i(sampler, 0);
-			m_skybox->Render(m_positionAttrib, m_colorAttrib, m_tcAttrib, m_hasTexture, m_normalAttrib);
-		}
-		glDepthMask(GL_TRUE); // Re-enable depth writing
+    glDepthFunc(GL_LEQUAL);
+    glDepthMask(GL_FALSE);
+    
+    // Full brightness material
+    Material* skyboxMat = new Material(
+        glm::vec4(1.0f, 1.0f, 1.0f, 1.0f),
+        glm::vec4(1.0f, 1.0f, 1.0f, 1.0f),
+        glm::vec4(0.0f, 0.0f, 0.0f, 1.0f),
+        glm::vec1(1.0f)
+    );
+    SendMaterialToShader(skyboxMat);
+    delete skyboxMat;
+    
+    glUniform1i(m_isSunLoc, 0);
+    glUniform1i(m_isShipLoc, 0);
+    glUniform1i(m_isSkyboxLoc, 1);
+    
+    glUniformMatrix4fv(m_modelMatrix, 1, GL_FALSE, glm::value_ptr(m_skybox->GetModel()));
+    
+    if (m_skybox->hasTex) {
+        glUniform1i(m_hasTexture, 1);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, m_skybox->getTextureID());
+        GLuint sampler = m_shader->GetUniformLocation("sp");
+        if (sampler != INVALID_UNIFORM_LOCATION) {
+            glUniform1i(sampler, 0);
+        }
+        
+        GLuint hasN = m_shader->GetUniformLocation("hasNormalMap");
+        if (hasN != INVALID_UNIFORM_LOCATION) {
+            glUniform1i(hasN, 0);
+        }
+        
+        m_skybox->Render(m_positionAttrib, m_colorAttrib, m_tcAttrib, m_hasTexture, m_normalAttrib);
+    }
+    
+    glUniform1i(m_isSkyboxLoc, 0);
+    glEnable(GL_CULL_FACE);
+    glDepthFunc(GL_LESS);
+    glDepthMask(GL_TRUE);
 	}
 
 	// Render Ship
@@ -804,7 +829,6 @@ void Graphics::Render()
 			if (sampler == INVALID_UNIFORM_LOCATION) {
 				printf("Sampler Not found not found\n");
 			}
-			glUseProgram(m_shader->GetShaderProgram());
 			glUniform1i(sampler, 0);
 			glUniform1i(hasN, false);
 		}
@@ -815,7 +839,6 @@ void Graphics::Render()
 			if (normalSampler == INVALID_UNIFORM_LOCATION) {
 				printf("Normal Sampler Not found not found\n");
 			}
-			glUseProgram(m_shader->GetShaderProgram());
 			glUniform1i(normalSampler, 1);
 			glUniform1i(hasN, true);
 		}
@@ -1116,7 +1139,7 @@ void Graphics::Render()
 			}
 			glUseProgram(m_shader->GetShaderProgram());
 			glUniform1i(sampler, 0);
-			glUniform1i(hasN, false);
+		 glUniform1i(hasN, false);
 		}
 		if (m_moon1->getNormalID()) {
 			glActiveTexture(GL_TEXTURE1);
@@ -1190,7 +1213,7 @@ void Graphics::Render()
 		glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(modelView)));
 
 		glUniformMatrix4fv(m_modelMatrix, 1, GL_FALSE, glm::value_ptr(m_saturn->GetModel()));
-
+		
 		GLuint hasN = m_shader->GetUniformLocation("hasNormalMap");
 		if (m_saturn->getTextureID()) {
 			glActiveTexture(GL_TEXTURE0);
@@ -1508,7 +1531,7 @@ void Graphics::Render()
 
 		GLuint hasN = m_shader->GetUniformLocation("hasNormalMap");
 		if (m_comet->getTextureID()) {
-			glActiveTexture(GL_TEXTURE0);
+		 glActiveTexture(GL_TEXTURE0);
 			glBindTexture(GL_TEXTURE_2D, m_comet->getTextureID());
 			GLuint sampler = m_shader->GetUniformLocation("sp");
 			if (sampler == INVALID_UNIFORM_LOCATION) {
@@ -1765,7 +1788,12 @@ bool Graphics::collectShPrLocs() {
 		anyProblem = false;
 	}
 
-	// Check if any of the lighting uniforms were not found
+	m_isSkyboxLoc = m_shader->GetUniformLocation("isSkybox");
+	if (m_isSkyboxLoc == INVALID_UNIFORM_LOCATION) {
+		printf("isSkybox uniform not found! Check your fragment shader.\n");
+		anyProblem = false;
+	}
+
 	if (m_globalAmbLoc == INVALID_UNIFORM_LOCATION || m_lightPosLoc == INVALID_UNIFORM_LOCATION) {
 		printf("Warning: Some lighting uniforms optimized out or missing.\n");
 		anyProblem = false;

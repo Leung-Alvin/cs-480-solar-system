@@ -137,6 +137,7 @@ class Graphics
 
 	GLint m_isShipLoc;
     GLint m_shipSpeedRatioLoc;
+	GLint m_isSkyboxLoc;
 
 };
 

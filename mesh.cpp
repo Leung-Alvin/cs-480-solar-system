@@ -188,39 +188,58 @@ bool Mesh::InitBuffers() {
 }
 
 bool Mesh::loadModelFromFile(const char* path) {
-	Assimp::Importer importer;
-	const aiScene* scene = importer.ReadFile(path, aiProcess_Triangulate);
+    Assimp::Importer importer;
+    const aiScene* scene = importer.ReadFile(path, aiProcess_Triangulate);
 
-	if (!scene) {
-		//printf("couldn't open the .obj file. \n");
-		//std::cout << path << std::endl;
-		return false;
-	}
+    if (!scene) {
+        printf("ERROR: Couldn't open .obj file: %s\n", path);
+        std::cout << "Path attempted: " << path << std::endl;
+        return false;
+    }
 
-	const int ivertTotalSize = 2 * sizeof(aiVector3D);
+    const int ivertTotalSize = 2 * sizeof(aiVector3D);
 
-	int iTotalVerts = 0;
+    int iTotalVerts = 0;
 
-	// Loop through each mesh in the scene and extract vertex data
-	for (int i = 0; i < scene->mNumMeshes; i++) {
-		aiMesh* mesh = scene->mMeshes[i];
-		int iMeshFaces = mesh->mNumFaces;
-		for (int j = 0; j < iMeshFaces; j++) {
-			const aiFace& face = mesh->mFaces[j];
-			for (int k = 0; k < 3; k++) {
-				// update here for each mesh's vertices to assign position, normal, and texture coordinates
-				Vertices.push_back(Vertex(
-					glm::vec3(mesh->mVertices[face.mIndices[k]].x, mesh->mVertices[face.mIndices[k]].y, mesh->mVertices[face.mIndices[k]].z),
-					glm::vec3(mesh->mNormals[face.mIndices[k]].x, mesh->mNormals[face.mIndices[k]].y, mesh->mNormals[face.mIndices[k]].z),
-					glm::vec2(mesh->HasTextureCoords(0) ? mesh->mTextureCoords[0][face.mIndices[k]].x : 0.0f,
-						mesh->HasTextureCoords(0) ? mesh->mTextureCoords[0][face.mIndices[k]].y : 0.0f)
-				));
-			}
-
-		}
-		iTotalVerts += mesh->mNumVertices;
-	}
-	for (int i = 0; i < Vertices.size(); i++) {
-		Indices.push_back(i);
-	}
+    for (int i = 0; i < scene->mNumMeshes; i++) {
+        aiMesh* mesh = scene->mMeshes[i];
+        int iMeshFaces = mesh->mNumFaces;
+        
+        if (!mesh->HasTextureCoords(0)) {
+            printf("WARNING: Mesh %d in %s has NO texture coordinates!\n", i, path);
+        }
+        
+        for (int j = 0; j < iMeshFaces; j++) {
+            const aiFace& face = mesh->mFaces[j];
+            for (int k = 0; k < 3; k++) {
+                // Get texture coordinates (default to 0 if missing)
+                glm::vec2 texCoord = glm::vec2(0.0f, 0.0f);
+                if (mesh->HasTextureCoords(0)) {
+                    texCoord = glm::vec2(
+                        mesh->mTextureCoords[0][face.mIndices[k]].x,
+                        mesh->mTextureCoords[0][face.mIndices[k]].y
+                    );
+                }
+                
+                // Update here for each mesh's vertices to assign position, normal, and texture coordinates
+                Vertices.push_back(Vertex(
+                    glm::vec3(mesh->mVertices[face.mIndices[k]].x, 
+                             mesh->mVertices[face.mIndices[k]].y, 
+                             mesh->mVertices[face.mIndices[k]].z),
+                    glm::vec3(mesh->mNormals[face.mIndices[k]].x, 
+                             mesh->mNormals[face.mIndices[k]].y, 
+                             mesh->mNormals[face.mIndices[k]].z),
+                    texCoord
+                ));
+            }
+        }
+        iTotalVerts += mesh->mNumVertices;
+    }
+    
+    for (int i = 0; i < Vertices.size(); i++) {
+        Indices.push_back(i);
+    }
+    
+    printf("Model loaded: %s - Vertices: %d, Faces: %d\n", path, (int)Vertices.size(), (int)Indices.size()/3);
+    return true;
 }

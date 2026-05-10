@@ -97,6 +97,7 @@ bool Shader::AddShader(GLenum ShaderType)
         uniform sampler2D sp2;
         uniform bool hasNormalMap;
         uniform bool isSun;
+        uniform bool isSkybox;
 
         struct PositionalLight {
             vec4 position;
@@ -132,6 +133,11 @@ bool Shader::AddShader(GLenum ShaderType)
         void main(void)
         {
             vec4 baseColor = vec4(color, 1.0);
+
+            if (isSkybox) {
+                frag_color = texture(sp, tc);  // Changed from calculated uv to tc
+                return;
+            }
 
             if (isSun) {
                 frag_color = baseColor; 
