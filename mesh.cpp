@@ -81,7 +81,7 @@ Mesh::Mesh(glm::vec3 pivot, const char* fname, const char* tname, const char* nn
 		hasTex = true;
 	else
 		hasTex = false;
-
+	// load normal map from file
 	m_norm = new Norm(nname);
 	if (m_norm && m_norm->getNormalID() != 0)
 		hasNorm = true;
@@ -156,26 +156,6 @@ void Mesh::Render(GLint posAttribLoc, GLint colAttribLoc, GLint tcAttribLoc, GLi
 	// Bind your Element Array
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IB);
 
-	// If has texture, set up texture unit(s) and bind texture
-	//if (m_texture != NULL) {
-	//	glUniform1i(hasTextureLoc, true);
-	//	glActiveTexture(GL_TEXTURE0);
-	//	glBindTexture(GL_TEXTURE_2D, m_texture->getTextureID());
-	//}
-	//else {
-	//	glUniform1i(hasTextureLoc, false);
-	//}
-
-	//if (m_norm != NULL) {
-	//	std::cout << "has normal map" << std::endl;
-	//	glUniform1i(normalAttribLoc, true);
-	//	glActiveTexture(GL_TEXTURE1);
-	//	glBindTexture(GL_TEXTURE_2D, m_norm->getNormalID());
-	//}
-	//else {
-	//	std::cout << "no normal map" << std::endl;
-	//	glUniform1i(normalAttribLoc, false);
-	//}
 
 	// Render
 	glDrawElements(GL_TRIANGLES, Indices.size(), GL_UNSIGNED_INT, 0);
@@ -213,7 +193,7 @@ bool Mesh::loadModelFromFile(const char* path) {
 
 	if (!scene) {
 		//printf("couldn't open the .obj file. \n");
-		std::cout << path << std::endl;
+		//std::cout << path << std::endl;
 		return false;
 	}
 
@@ -221,6 +201,7 @@ bool Mesh::loadModelFromFile(const char* path) {
 
 	int iTotalVerts = 0;
 
+	// Loop through each mesh in the scene and extract vertex data
 	for (int i = 0; i < scene->mNumMeshes; i++) {
 		aiMesh* mesh = scene->mMeshes[i];
 		int iMeshFaces = mesh->mNumFaces;

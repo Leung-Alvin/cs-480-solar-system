@@ -4,7 +4,6 @@ Light::Light(glm::vec4 gAmb, glm::vec4 lightAmb, glm::vec4 lightDiff,
     glm::vec4 lightSpec, glm::vec3 lightPos, glm::mat4 viewMatrix)
 {
     // 1. Establish Light Position (View Space transformation)
-    // Note: We multiply by the View Matrix to move the light from World -> Camera space
     glm::vec4 vPos = viewMatrix * glm::vec4(lightPos, 1.0f);
     m_lightPosition = lightPos;
     m_lightPositionViewSpace[0] = vPos.x;
@@ -43,6 +42,7 @@ Light::~Light()
 
 void Light::updateViewSpacePosition(glm::mat4 viewMatrix)
 {
+	// Update the light position in view space
     glm::vec4 vPos = viewMatrix * glm::vec4(m_lightPosition, 1.0f);
     m_lightPositionViewSpace[0] = vPos.x;
     m_lightPositionViewSpace[1] = vPos.y;

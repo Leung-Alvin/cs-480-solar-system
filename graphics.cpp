@@ -14,6 +14,7 @@ Graphics::~Graphics()
 
 
 glm::vec3 Graphics::getPlanetPosition(PlanetID planet) {
+	// The position of a planet can be extracted from the translation component of its model matrix.
 	switch (planet) {
 	case SUN: return glm::vec3(m_sun->GetModel()[3]);
 	case MERCURY: return glm::vec3(m_mercury->GetModel()[3]);
@@ -38,6 +39,7 @@ glm::vec3 Graphics::getPlanetPosition(PlanetID planet) {
 }
 
 PlanetID Graphics::findClosestPlanetID() {
+	// Start with the assumption that the closest planet is the sun, and then check each planet in turn.
 	glm::vec3 shipPos = glm::vec3(m_mesh->GetModel()[3]);
 	PlanetID bestID = SUN;
 	float minDist = glm::distance(shipPos, getPlanetPosition(SUN));
@@ -46,7 +48,7 @@ PlanetID Graphics::findClosestPlanetID() {
 	PlanetID allPlanets[] = { MERCURY, VENUS, EARTH, MOON, MARS, 
 		JUPITER, JUPITER_MOON1, JUPITER_MOON2, SATURN, SATURN_MOON1, SATURN_MOON2, COMET, 
 		URANUS, NEPTUNE, CERES, ERIS, HAUMEA };
-
+	// Check each planet and update the closest one if necessary.
 	for (PlanetID p : allPlanets) {
 		float d = glm::distance(shipPos, getPlanetPosition(p));
 		if (d < minDist) {
@@ -58,6 +60,7 @@ PlanetID Graphics::findClosestPlanetID() {
 }
 
 float Graphics::getPlanetRadius(PlanetID planet) {
+	// The radius of a planet can be approximated by the scale factor in its model matrix.
 	glm::mat4 model;
 
 	switch (planet) {
@@ -82,13 +85,11 @@ float Graphics::getPlanetRadius(PlanetID planet) {
 	default:            return 1.0f; // Fallback
 	}
 
-	// Extract the scale from the model matrix. 
-	// Since we use uniform scaling, the length of the first column 
-	// vector represents the scaling factor (and thus our radius).
 	return glm::length(glm::vec3(model[0]));
 }
 
 void Graphics::SendMaterialToShader(Material* mat) {
+	// This function sends the material properties to the shader.
 	if (mat != nullptr) {
 		glUniform4fv(mAmbLoc, 1, glm::value_ptr(mat->matAmbient));
 		glUniform4fv(mDiffLoc, 1, glm::value_ptr(mat->matDiffuse));
@@ -160,20 +161,24 @@ bool Graphics::Initialize(int width, int height)
 		printf("Program to Finalize\n");
 		return false;
 	}
+
+	// Light properties for the sun and planets
 	glm::vec4 gAmb(0.7f, 0.7f, 0.7f, 1.0f);
 	glm::vec4 lAmb(0.3f, 0.3f, 0.3f, 1.0f);
 	glm::vec4 lDiff(0.8f, 0.8f, 0.8f, 1.0f);
 	glm::vec4 lSpec(0.9f, 0.9f, 0.9f, 0.9f);
 	glm::vec3 lPos(0.0f, 0.0f, 0.0f);
-
+	// Material properties for the planets and ship
 	glm::vec4 matAmbient(0.2f, 0.2f, 0.2f, 1.0f);
 	glm::vec4 matDiffuse(0.8f, 0.8f, 0.8f, 1.0f);
 	glm::vec4 matSpecular(0.9f, 0.9f, 0.9f, 0.9f);
 	glm::vec1 matShininess(32.0f);
 
+	// Create the light and material objects
 	m_light = new Light(gAmb, lAmb, lDiff, lSpec, lPos, m_camera->GetView());
 	m_material = new Material(matAmbient, matDiffuse, matSpecular,matShininess);
 
+	// Different materials for rocky planets, gas giants, the sun, and the ship
 	m_rockyMaterial = new Material(
 		glm::vec4(0.1f, 0.1f, 0.1f, 1.0f),
 		glm::vec4(0.6f, 0.6f, 0.6f, 1.0f), 
@@ -209,7 +214,6 @@ bool Graphics::Initialize(int width, int height)
 	}
 
 	// Starship
-	//m_mesh = new Mesh(glm::vec3(0.0f, 10.0f, -16.0f), "assets\\SpaceShip-1.obj", "assets\\SpaceShip-1.png");
 	m_mesh = new Mesh(glm::vec3(0.0f, 10.0f, -16.0f), "assets\\SpaceShip-1.obj", "assets\\SpaceShip-1.png", "assets\\SpaceShip-1-n.png");
 	// position of the starship
 	std::vector<float> speed, dist, rotSpeed, scale;
@@ -223,6 +227,7 @@ bool Graphics::Initialize(int width, int height)
 	rotSpeed = { 0.0f, 0.0f, 0.0f };
 	scale = { 0.001f, 0.001f, 0.001f };
 
+	// Apply transformations to the starship
 	localTransform = modelStack.top();
 	localTransform *= glm::rotate(glm::mat4(1.f), rotSpeed[0] * (float)0, rotVector);
 	glm::mat4 correction = glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
@@ -267,14 +272,13 @@ bool Graphics::Initialize(int width, int height)
 
 	// Skybox - use a large cube with a space texture
 	m_skybox = new Mesh(glm::vec3(0.0f, 0.0f, 0.0f), "assets\\Galaxy-cubemap2.png");
-
+	
+	// Asteroid belts
 	m_asteroidCount = 50;
 	m_asteroids = new Asteroid("assets\\2k_moon.jpg", "assets\\2k_moon-n.jpg");
-	//m_asteroids = new Asteroid("assets\\2k_moon.jpg", "assets\\2k_moon-n.jpg");
 
 	m_outerAsteroidCount = 150;
 	m_outerAsteroids = new Asteroid("assets\\2k_moon.jpg", "assets\\2k_moon-n.jpg");
-	//m_outerAsteroids = new Asteroid("assets\\2k_moon.jpg", "assets\\2k_moon-n.jpg");
 
 	//enable depth testing
 	glEnable(GL_DEPTH_TEST);
@@ -710,6 +714,7 @@ void Graphics::HierarchicalUpdate2(double dt) {
 
 void Graphics::ComputeTransforms(double dt, std::vector<float> speed, std::vector<float> dist,
 	std::vector<float> rotSpeed, glm::vec3 rotVector, std::vector<float> scale, glm::mat4& tmat, glm::mat4& rmat, glm::mat4& smat) {
+	// Compute the translation, rotation, and scale matrices based on the provided parameters
 	tmat = glm::translate(glm::mat4(1.f),
 		glm::vec3(cos(speed[0] * dt) * dist[0], sin(speed[1] * dt) * dist[1], sin(speed[2] * dt) * dist[2])
 	);
@@ -730,6 +735,9 @@ void Graphics::Render()
 	glm::vec3 cameraPos = m_camera->GetView()[3];
 	GLint viewPosLoc = m_shader->GetUniformLocation("viewPos");
 	glUniform3fv(viewPosLoc, 1, glm::value_ptr(cameraPos));
+	
+
+	// Send light and material properties to the shader
 
 	if (m_light != nullptr) {
 		glUniform4fv(m_globalAmbLoc, 1, glm::value_ptr(m_light->m_globalAmbient));
@@ -754,7 +762,7 @@ void Graphics::Render()
 	glUniformMatrix4fv(m_viewMatrix, 1, GL_FALSE, glm::value_ptr(m_camera->GetView()));
 	//std::cout << "PROJ: " << m_projectionMatrix << " VIEW: " << m_viewMatrix << std::endl;
 
-
+	// Render Skybox first with depth writing disabled
 	if (m_skybox != NULL) {
 		glDepthMask(GL_FALSE); // Disable depth writing for 
 		glUniformMatrix4fv(m_modelMatrix, 1, GL_FALSE, glm::value_ptr(m_skybox->GetModel()));
@@ -772,21 +780,7 @@ void Graphics::Render()
 		glDepthMask(GL_TRUE); // Re-enable depth writing
 	}
 
-	// Render mesh (starship)
-	//if (m_mesh != NULL && m_showShip) {
-	//	glUniform1i(m_hasTexture, false);
-	//	glUniformMatrix3fv(m_normalMatrix, 1, GL_FALSE, glm::value_ptr(glm::transpose(glm::inverse(glm::mat3(m_camera->GetView() * m_mesh->GetModel())))));
-	//	glUniformMatrix4fv(m_modelMatrix, 1, GL_FALSE, glm::value_ptr(m_mesh->GetModel()));
-	//	if (m_mesh->hasTex) {
-	//		glActiveTexture(GL_TEXTURE0);
-	//		glBindTexture(GL_TEXTURE_2D, m_mesh->getTextureID());
-	//		GLuint sampler = m_shader->GetUniformLocation("sp");
-	//		if (sampler != INVALID_UNIFORM_LOCATION) {
-	//			glUniform1i(sampler, 0);
-	//		}
-	//		m_mesh->Render(m_positionAttrib, m_colorAttrib, m_tcAttrib, m_hasTexture, m_normalAttrib);
-	//	}
-	//}
+	// Render Ship
 	if (m_mesh != NULL && m_showShip) {
 
 		SendMaterialToShader(m_shipMaterial);
@@ -931,6 +925,7 @@ void Graphics::Render()
 		}
 		m_venus->Render(m_positionAttrib, m_colorAttrib, m_tcAttrib, m_hasTexture, m_normalAttrib);
 	}
+	// Render Earth
 	if (m_earth != NULL) {
 
 		SendMaterialToShader(m_rockyMaterial);
@@ -970,6 +965,8 @@ void Graphics::Render()
 		}
 		m_earth->Render(m_positionAttrib, m_colorAttrib, m_tcAttrib, m_hasTexture, m_normalAttrib);
 	}
+
+	// Render Moon
 
 	if (m_moon != NULL) {
 
@@ -1054,22 +1051,6 @@ void Graphics::Render()
 	}
 
 	// Render Jupiter
-	//if (m_jupiter != NULL) {
-	//	SendMaterialToShader(m_gasMaterial);
-	//	glUniformMatrix4fv(m_modelMatrix, 1, GL_FALSE, glm::value_ptr(m_jupiter->GetModel()));
-	//	if (m_jupiter->hasTex) {
-	//		glUniform1i(m_hasTexture, 1);
-	//		glActiveTexture(GL_TEXTURE0);
-	//		glBindTexture(GL_TEXTURE_2D, m_jupiter->getTextureID());
-	//		GLuint sampler = m_shader->GetUniformLocation("sp");
-	//		if (sampler == INVALID_UNIFORM_LOCATION)
-	//		{
-	//			printf("Sampler Not found not found\n");
-	//		}
-	//		glUniform1i(sampler, 0);
-	//		m_jupiter->Render(m_positionAttrib, m_colorAttrib, m_tcAttrib, m_hasTexture, m_normalAttrib);
-	//	}
-	//}
 	if (m_jupiter != NULL) {
 
 		SendMaterialToShader(m_gasMaterial);
@@ -1151,7 +1132,7 @@ void Graphics::Render()
 		m_moon1->Render(m_positionAttrib, m_colorAttrib, m_tcAttrib, m_hasTexture, m_normalAttrib);
 	}
 
-	// Render Moon
+	// Render Moon 2
 	if (m_moon2 != NULL) {
 
 		SendMaterialToShader(m_rockyMaterial);
@@ -1222,17 +1203,6 @@ void Graphics::Render()
 			glUniform1i(sampler, 0);
 			glUniform1i(hasN, false);
 		}
-		//if (m_saturn->getNormalID()) {
-		//	glActiveTexture(GL_TEXTURE1);
-		//	glBindTexture(GL_TEXTURE_2D, m_saturn->getNormalID());
-		//	GLuint normalSampler = m_shader->GetUniformLocation("sp2");
-		//	if (normalSampler == INVALID_UNIFORM_LOCATION) {
-		//		printf("Normal Sampler Not found not found\n");
-		//	}
-		//	glUseProgram(m_shader->GetShaderProgram());
-		//	glUniform1i(normalSampler, 1);
-		//	glUniform1i(hasN, true);
-		//}
 		m_saturn->Render(m_positionAttrib, m_colorAttrib, m_tcAttrib, m_hasTexture, m_normalAttrib);
 	}
 
@@ -1521,7 +1491,7 @@ void Graphics::Render()
 		}
 		m_haumea->Render(m_positionAttrib, m_colorAttrib, m_tcAttrib, m_hasTexture, m_normalAttrib);
 	}
-
+	// Render Comet near Sun
 	if (m_comet != NULL) {
 
 		SendMaterialToShader(m_rockyMaterial);
@@ -1602,7 +1572,7 @@ void Graphics::Render()
 			glUniform1i(m_useInstancing, 0);
 		}
 	}
-		
+	// Render Outer Asteroid Belt
 	if (m_outerAsteroids != NULL && m_outerAsteroidCount > 0) {
 		SendMaterialToShader(m_rockyMaterial);
 		glUniform1i(m_isSunLoc, 0);
@@ -1652,6 +1622,7 @@ void Graphics::Render()
 		//std::cout << "Error initializing OpenGL! " << error << ", " << val << std::endl;
 	}
 
+	// Find instancing for asteroids in shader
 	m_useInstancing = m_shader->GetUniformLocation("useInstancing");
 	if (m_useInstancing == INVALID_UNIFORM_LOCATION) {
 		printf("m_useInstancing not found\n");
@@ -1693,64 +1664,64 @@ bool Graphics::collectShPrLocs() {
 		printf("v_position attribute not found\n");
 		anyProblem = false;
 	}
-
+	// Locate the color vertex attribute (OBSOLETE since color can be found from texture)
 	m_colorAttrib = 30;
 	if (m_colorAttrib == -1)
 	{
 		printf("color attribute not found\n");
 		anyProblem = false;
 	}
-
+	// Locate the texture coordinate vertex attribute
 	m_tcAttrib = m_shader->GetAttribLocation("v_tc");
 	if (m_tcAttrib == -1)
 	{
 		printf("v_texcoord attribute not found\n");
 		anyProblem = false;
 	}
-
+	// Locate the hasTexture uniform (OBSOLETE)
 	m_hasTexture = m_shader->GetUniformLocation("hasTexture");
 	if (m_hasTexture == INVALID_UNIFORM_LOCATION) {
 		printf("hasTexture uniform not found\n");
 		anyProblem = false;
 	}
-
+	// Locate the hasNormalMap uniform
 	m_hasNorm = m_shader->GetUniformLocation("hasNormalMap");
 	if (m_hasNorm == INVALID_UNIFORM_LOCATION) {
 		printf("hasNormalMap uniform not found\n");
 		anyProblem = false;
 	}
-
+	// Locate the normal vertex attribute
 	m_normalAttrib = m_shader->GetAttribLocation("v_normal");
 	if (m_normalAttrib == -1) {
 		printf("v_normal attribute not found! Check your vertex shader.\n");
 		anyProblem = false;
 	}
-
+	// Locate the isSun uniform
 	m_isSunLoc = m_shader->GetUniformLocation("isSun");
 	if (m_isSunLoc == INVALID_UNIFORM_LOCATION) {
 		printf("isSun uniform not found! Check your fragment shader.\n");
 		anyProblem = false;
 	}
-
+	// Locate the isShip uniform
 	m_isShipLoc = m_shader->GetUniformLocation("isShip");
 	if (m_isShipLoc == INVALID_UNIFORM_LOCATION) {
 		printf("isShip uniform not found! Check your fragment shader.\n");
 		anyProblem = false;
 	}
 
-
+	// Locate the shipSpeedRatio uniform
 	m_shipSpeedRatioLoc = m_shader->GetUniformLocation("shipSpeedRatio");
 	if (m_shipSpeedRatioLoc == INVALID_UNIFORM_LOCATION) {
 		printf("shipSpeedRatio uniform not found! Check your fragment shader.\n");
 		anyProblem = false;
 	}
-
+	// Locate the global ambient uniform
 	m_globalAmbLoc = m_shader->GetUniformLocation("GlobalAmbient");
 	if (m_globalAmbLoc == -1) {
 		printf("GlobalAmbient uniform not found! Check your fragment shader.\n");
 		anyProblem = false;
 	}
-
+	// Locate the light properties in the shader
 	m_lightAmbLoc = m_shader->GetUniformLocation("light.ambient");
 	if (m_lightAmbLoc == -1) {
 		printf("LightAmbient uniform not found! Check your fragment shader.\n");
@@ -1771,6 +1742,8 @@ bool Graphics::collectShPrLocs() {
 		printf("LightPosition uniform not found! Check your fragment shader.\n");
 		anyProblem = false;
 	}
+
+	// Locate the material properties in the shader
 	mAmbLoc = m_shader->GetUniformLocation("material.ambient");
 	if (mAmbLoc == -1) {
 		printf("MaterialAmbient uniform not found! Check your fragment shader.\n");
@@ -1792,6 +1765,7 @@ bool Graphics::collectShPrLocs() {
 		anyProblem = false;
 	}
 
+	// Check if any of the lighting uniforms were not found
 	if (m_globalAmbLoc == INVALID_UNIFORM_LOCATION || m_lightPosLoc == INVALID_UNIFORM_LOCATION) {
 		printf("Warning: Some lighting uniforms optimized out or missing.\n");
 		anyProblem = false;
@@ -1832,5 +1806,6 @@ std::string Graphics::ErrorString(GLenum error)
 }
 
 void Graphics::UpdateCamera(float x, float y, bool l, bool r, bool u, bool d) {
+	// Update the camera's position and orientation based on user input
 	m_camera->Update(x, y, l, r, u, d);
 }

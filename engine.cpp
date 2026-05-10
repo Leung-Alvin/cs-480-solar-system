@@ -7,6 +7,7 @@ double Engine::scrollOffsetY = 0.0;
 
 Engine::Engine(const char* name, int width, int height)
 {
+	// Initialize our window and graphics objects here
   m_WINDOW_NAME = name;
   m_WINDOW_WIDTH = width;
   m_WINDOW_HEIGHT = height;
@@ -48,8 +49,9 @@ bool Engine::Initialize()
     printf("The graphics failed to initialize.\n");
     return false;
   }
-  //glfwSetWindowUserPointer(m_window->getWindow(), this);
-  //glfwSetCursorPosCallback(m_window->getWindow(), cursorPositionCallBack);
+
+
+  // Set up input callbacks and modes
 
   glfwSetInputMode(m_window->getWindow(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
@@ -81,17 +83,18 @@ void Engine::Run()
 
 void Engine::ProcessInput()
 {
+    // Provide clearance to prevent camera clipping 
     float shipHullSize = 20.0f;
 
+
+	// Calculate zoom changes based on scroll input
     if (scrollOffsetY != 0.0) {
-        // Instead of adding a flat 20.0f, change by 10% per scroll
         float multiplier = (scrollOffsetY > 0) ? 0.9f : 1.1f;
 
         if (isThird) {
             tpZoom *= multiplier;
         }
         else {
-            // Invert for FP because + moves further away
             fpZoom *= multiplier;
         }
         scrollOffsetY = 0.0;
@@ -103,6 +106,7 @@ void Engine::ProcessInput()
 
     glm::mat4 shipModel = m_graphics->getMesh()->GetModel();
 
+	// Define control parameters for movement and rotation
 	float sensitivity = 0.002;
     float rollSpeed = 0.02f;
     float pitchSpeed = 0.03f;
@@ -115,6 +119,7 @@ void Engine::ProcessInput()
     float drag = 0.98f;    
     float stopThreshold = 0.001f; 
 
+	// Update accleration based on mouse input
     if (glfwGetMouseButton(m_window->getWindow(), GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
         moveSpeed += accelRate;
     }
@@ -128,10 +133,13 @@ void Engine::ProcessInput()
         }
     }
 
+    // Speed ratio is fed into shaders to determine engine glow intensity
 	m_graphics->m_shipSpeedRatio = std::min(std::abs(moveSpeed) / maxSpeed, 1.0f);
 
+	// Move ship forward/backward based on current speed
     shipModel = glm::translate(shipModel, glm::vec3(0.0f, 0.0f, moveSpeed));
 
+	// Rotate ship based on keyboard input
     if (glfwGetKey(m_window->getWindow(), GLFW_KEY_S) == GLFW_PRESS) {
         shipModel = glm::rotate(shipModel, pitchSpeed, glm::vec3(1.0f, 0.0f, 0.0f));
     }
@@ -152,7 +160,7 @@ void Engine::ProcessInput()
     }
     
 
-
+	// Calculate mouse movement offsets
     double mouseX, mouseY;
     glfwGetCursorPos(m_window->getWindow(), &mouseX, &mouseY);
     static bool firstFrame = true;
@@ -167,12 +175,9 @@ void Engine::ProcessInput()
     prevMouseX = mouseX;
     prevMouseY = mouseY;
 
-    //m_graphics->getCamera()->Update(glm::rotate(glm::mat4(1.0f), (float)x * 0.001f, glm::vec3(0.0f, 1.0f, 0.0f)));
-    //m_graphics->getCamera()->Update(glm::rotate(glm::mat4(1.0f), (float)y * 0.001f, glm::vec3(1.0f, 0.0f, 0.0f)));
-
     float targetRadius = 1.0f;
 
-
+	// If snapping is enabled and a target is locked, smoothly move the ship towards the target position
     if (isSnapping && lockedTarget != NONE) {
         glm::vec3 targetPos = m_graphics->getPlanetPosition(lockedTarget);
         glm::vec3 shipPos = glm::vec3(shipModel[3]);
@@ -180,7 +185,9 @@ void Engine::ProcessInput()
 
         glm::vec3 diff = shipPos - targetPos;
         float currentDist = glm::length(diff);
+        
 
+		// Set approach distance based on target type and size to prevent overshooting or getting too close
         if (currentDist > 0.1f) {
             float approachDist;
 
@@ -201,21 +208,23 @@ void Engine::ProcessInput()
             shipModel[3] = glm::vec4(newPos, 1.0f);
         }
     }
-
+	// If in third-person mode, rotate the ship based on mouse movement to allow for free look around the ship
     if (isThird) {
         shipModel = glm::rotate(shipModel, (float)-x * sensitivity, glm::vec3(0.0f, 1.0f, 0.0f));
         shipModel = glm::rotate(shipModel, (float)y * sensitivity, glm::vec3(1.0f, 0.0f, 0.0f));
     }
 
+	// Update the ship's model matrix in the graphics system
     m_graphics->getMesh()->Update(shipModel);
 
+	// Calculate camera position and orientation based on current mode (first-person or third-person) and ship's position and orientation
     glm::vec3 finalCameraPos;
     glm::vec3 finalLookAt;
     glm::vec3 shipPos = glm::vec3(shipModel[3]);
     glm::vec3 shipForward = glm::vec3(shipModel[2]); 
     glm::vec3 shipUp = glm::vec3(shipModel[1]);
 
-
+	// In third-person mode, position the camera behind the ship at a distance determined by tpZoom, and look slightly ahead of the ship to provide better visibility during movement
     if (isThird) {
         const float SHIP_MIN_DISTANCE = 40.0f;
 
@@ -235,6 +244,7 @@ void Engine::ProcessInput()
 
         finalLookAt = shipPos + (shipForward * (tpZoom * 0.5f));
     }
+	// In first-person mode, position the camera at the ship's cockpit and allow zooming in and out with limits to prevent clipping or excessive distance. If snapping to a target, smoothly interpolate the camera position towards a point in front of the target to provide a dynamic view of the target while maintaining the ship's orientation.
     else {
 
         float cockpitHeight = shipHullSize * 0.5f;
@@ -242,10 +252,11 @@ void Engine::ProcessInput()
         float minFP = 0.00001f;
         //float maxFP = std::max(minFP + 10.0f, targetRadius * 2.0f);
 		float maxFP = 100.0f;
-		cout << "minFP: " << minFP << ", maxFP: " << maxFP << ", fpZoom: " << fpZoom << endl;
         fpZoom = glm::clamp(fpZoom, minFP, maxFP);
 
         finalCameraPos = glm::vec3(shipModel * glm::vec4(0.0f, cockpitHeight, fpZoom, 1.0f));
+
+		// If snapping to a target, smoothly interpolate the camera position towards a point in front of the target to provide a dynamic view of the target while maintaining the ship's orientation
 
         if (isSnapping && lockedTarget != NONE) {
             glm::vec3 targetPos = m_graphics->getPlanetPosition(lockedTarget);
@@ -254,9 +265,6 @@ void Engine::ProcessInput()
 			
 			glm::vec3 zoomedPos = targetPos + (viewDir * fpZoom);
 
-			//cout << "zoomedPos: " << zoomedPos.x << ", " << zoomedPos.y << ", " << zoomedPos.z << endl;
-
-			//Apply Zoom with linear interpolation towards the target position
             finalLookAt = targetPos;
 			finalCameraPos = glm::mix(finalCameraPos, zoomedPos, 0.1f);
         }
@@ -281,20 +289,12 @@ void Engine::cursor_position_callback(GLFWwindow* window, double xpos, double yp
 
 unsigned int Engine::getDT()
 {
-  //long long TimeNowMillis = GetCurrentTimeMillis();
-  //assert(TimeNowMillis >= m_currentTimeMillis);
-  //unsigned int DeltaTimeMillis = (unsigned int)(TimeNowMillis - m_currentTimeMillis);
-  //m_currentTimeMillis = TimeNowMillis;
-  //return DeltaTimeMillis;
+
     return glfwGetTime();
 }
 
 long long Engine::GetCurrentTimeMillis()
 {
-  //timeval t;
-  //gettimeofday(&t, NULL);
-  //long long ret = t.tv_sec * 1000 + t.tv_usec / 1000;
-  //return ret;
     return (long long) glfwGetTime();
 }
 
@@ -306,14 +306,18 @@ void Engine::Display(GLFWwindow* window, double time) {
 }
 
 static void cursorPositionCallBack(GLFWwindow* window, double xpos, double ypos) {
+
+	// Retrieve the Engine instance from the window's user pointer
+
     Engine* eng = (Engine*)glfwGetWindowUserPointer(window);
 
+	// If this is the first time the mouse callback is called, initialize the lastX and lastY values to the current mouse position to prevent large jumps in camera orientation
     if (eng->getFirstMouse()) {
 		eng->setLastX(xpos);
         eng->setLastY(ypos);
         eng->setFirstMouse(false);
     }
-
+	// Calculate the offset of the mouse movement since the last callback and update the Engine's xOffset and yOffset values, which will be used to rotate the camera in the ProcessInput function.
     eng->setXOffset(xpos - eng->getLastX());
     eng->setYOffset(eng->getLastY() - ypos);
 
@@ -328,7 +332,7 @@ static void scrollCallback(GLFWwindow* window, double xoffset, double yoffset) {
 
 void rKeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
     Engine* engine = static_cast<Engine*>(glfwGetWindowUserPointer(window));
-
+	// Toggle snapping mode when the R key is pressed. If snapping is enabled, lock onto the nearest planet and switch to third-person view. If snapping is disabled, unlock the target and switch back to first-person view.
     if (key == GLFW_KEY_R && action == GLFW_PRESS) {
         engine->isSnapping = !engine->isSnapping;
 

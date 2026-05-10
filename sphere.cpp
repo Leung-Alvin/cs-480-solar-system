@@ -49,7 +49,7 @@ Sphere::Sphere(int prec, const char* fname, const char* nname) { // prec is prec
         hasTex = true;
     else
         hasTex = false;
-
+	// load normal map from file
 	m_norm = new Norm(nname);
     if (m_norm && m_norm->getNormalID() != 0)
         hasNorm = true;

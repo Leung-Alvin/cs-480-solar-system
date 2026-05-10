@@ -44,6 +44,9 @@ Asteroid::Asteroid(const char* fname, const char* nname) {
 
 
 void Asteroid::setupVertices() {
+
+	// Define the unique vertex data for the asteroid
+
     numVertices = 14;
     numIndices = 24;
     for (int i = 0; i < numVertices; i++) { vertices.push_back(glm::vec3()); }
@@ -121,6 +124,7 @@ void Asteroid::setupBuffers() {
 }
 
 void Asteroid::setupModelMatrix(glm::vec3 pivot, float angle, float scale) {
+	//Perform the initial transformations to position the asteroids in the world
     pivotLocation = pivot;
     model = glm::translate(glm::mat4(1.0f), pivotLocation);
     model *= glm::rotate(glm::mat4(1.f), angle, glm::vec3(0., 1., 0));
@@ -203,25 +207,6 @@ void Asteroid::Render(GLint posAttribLoc, GLint colAttribLoc, GLint tcAttribLoc,
 
     // Bind your Element Array
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IB);
-
-    // Handle texture binding
- //   if (m_texture != NULL) {
- //       glUniform1i(hasTextureLoc, true);
- //       glActiveTexture(GL_TEXTURE0);
- //       glBindTexture(GL_TEXTURE_2D, m_texture->getTextureID());
- //   }
- //   else {
- //       glUniform1i(hasTextureLoc, false);
- //   }
-
- //   if (m_norm != NULL) {
- //       glUniform1i(normalAttribLoc, true);
- //       glActiveTexture(GL_TEXTURE1);
- //       glBindTexture(GL_TEXTURE_2D, m_norm->getNormalID());
- //   }
- //   else {
- //       glUniform1i(normalAttribLoc, false);
-	//}
 
     // Render with instancing
     glDrawElementsInstanced(GL_TRIANGLES, static_cast<GLsizei>(Indices.size()), GL_UNSIGNED_INT, 0, instanceCount);

@@ -12,6 +12,7 @@ Texture::Texture() {
 }
 
 bool Texture::loadTexture(const char* texFile) {
+	// Load the texture from file using SOIL
 	m_TextureID = SOIL_load_OGL_texture(texFile, SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_INVERT_Y);
 	if (!m_TextureID) {
 		printf("Failed: Could not open texture file!\n");

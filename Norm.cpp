@@ -1,6 +1,7 @@
 #include "Norm.h"
 
 Norm::Norm(const char* fileName) {
+	// Load the texture data from the file and initialize the texture
 
 	loadTexture(fileName);
 	initializeTexture();
@@ -12,6 +13,7 @@ Norm::Norm() {
 }
 
 bool Norm::loadTexture(const char* texFile) {
+	// Load the texture data from the file using SOIL
 	m_TextureID = SOIL_load_OGL_texture(texFile, SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_INVERT_Y);
 	if (!m_TextureID) {
 		printf("Failed: Could not open NORM texture file!\n");
@@ -21,6 +23,7 @@ bool Norm::loadTexture(const char* texFile) {
 }
 
 bool Norm::initializeTexture() {
+	// Bind the texture and set texture parameters
 
 	glGenerateMipmap(GL_TEXTURE_2D);
 	glTexParameteri(GL_TEXTURE_2D,
